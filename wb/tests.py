@@ -10,6 +10,9 @@ class TestWildBerriesAPI(unittest.IsolatedAsyncioTestCase):
     async def tearDown(self):
         await self.api.close()
 
+    async def test_search(self):
+        search = await self.api.search(query="русалка")
+
     async def test_base_get_request(self):
         data = {
             "data": {
