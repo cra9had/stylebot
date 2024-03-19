@@ -51,10 +51,3 @@ class WildBerriesAPI:
     async def close(self):
         await self._session.close()
 
-
-if __name__ == "__main__":
-    api = WildBerriesAPI()
-    z = asyncio.run(api._request(url="https://reqres.in/api/users/2",
-            request_method="get",))
-    print(z)
-    asyncio.run(api.close())
