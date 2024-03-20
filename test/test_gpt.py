@@ -14,5 +14,9 @@ class ChatGPTTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(queries), 3)
 
     async def test_chat(self):
-        answer = await self.gpt._chat("Ping!")
+        answer = await self.gpt._chat(
+            """"Собери мне образ из коричневых шорт и красной футболки"
+
+Выпиши из фразы всю одежду друг за другом через ; в одну строчку, а если таковой нет, напиши NoClothesResponse"""
+        )
         self.assertEqual(answer, "Pong!")
