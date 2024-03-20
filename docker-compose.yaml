@@ -5,3 +5,5 @@ services:
     command: python main.py
     volumes:
       - .:/app
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
