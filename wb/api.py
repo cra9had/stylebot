@@ -1,8 +1,9 @@
 import json
-from typing import Literal, Optional, Any
+from typing import Literal, Optional, Any, Generator
 from loguru import logger
 from .utils import get_query_id_for_search, image_url
 from dataclasses import dataclass
+from itertools import product as _product
 import aiohttp
 import asyncio
 
@@ -45,6 +46,17 @@ class WildBerriesAPI:
                         image_url=image_url(product.get("id"), "BIG"))
             )
         return products
+
+    @staticmethod
+    def get_combinations(*products: list[Product], max_repeats: int = 3) -> Generator[list[Product]]:
+        # TODO: test
+        """
+        Возращает комбинации одежды. В *products перечисляем list[Product]
+        :keyword max_repeats - Максимальное кол-во комбинаций с одним элементомЯ
+        """
+        for combination in _product(*products):
+            if max(combination.count(item) for item in set(combination)) <= max_repeats:
+                yield combination
 
     async def search(self, query: str, page: int = 1) -> list[Product]:
         headers = {
