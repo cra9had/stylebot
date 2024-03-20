@@ -1,6 +1,8 @@
+import json
 from typing import Literal, Optional, Any
 from loguru import logger
-from .utils import get_query_id_for_search
+from .utils import get_query_id_for_search, image_url
+from dataclasses import dataclass
 import aiohttp
 import asyncio
 
@@ -11,6 +13,14 @@ DEFAULT_RETRIES_NUM = 3
 DEFAULT_ERROR_SLEEP_TIME = 5    # In seconds
 
 
+@dataclass
+class Product:
+    id: int    # Артикул товара WildBerries
+    price: int
+    name: str
+    image_url: str
+
+
 class WildBerriesAPI:
     """Класс для асинхронной работы с private API wildberries"""
 
@@ -18,7 +28,24 @@ class WildBerriesAPI:
         self.headers = {"User-Agent": user_agent}
         self._session: Optional[aiohttp.ClientSession] = None
 
-    async def search(self, query: str, page: int = 1) -> dict:
+    def search_data_to_products(self, products_json: dict) -> list[Product]:
+        try:
+            data = products_json.get("data").get("products")
+        except AttributeError as e:
+            logger.error("WildBerries API didn't return products")
+            raise e
+
+        products = []
+        for product in data:
+            products.append(
+                Product(id=product.get("id"),
+                        price=product.get("sizes")[0].get("price").get("basic") // 100,     # TODO: unsafe, maybe refactor?!
+                        name=product.get("name"),
+                        image_url=image_url(product.get("id"), "BIG"))
+            )
+        return products
+
+    async def search(self, query: str, page: int = 1) -> list[Product]:
         # TODO: return Products dataclasses
         headers = {
             "x-queryid": get_query_id_for_search()
@@ -35,8 +62,11 @@ class WildBerriesAPI:
             "suppressSpellcheck": "false",
             "uclusters": 1,
         }
+        if page != 1:
+            params["page"] = page
         url = "https://search.wb.ru/exactmatch/ru/common/v5/search"
-        return await self._request(url=url, request_method="get", params=params, headers=headers)
+        response = await self._request(url=url, request_method="get", params=params, headers=headers)
+        return self.search_data_to_products(json.loads(response))
 
     async def _get_new_session(self) -> aiohttp.ClientSession:
         return aiohttp.ClientSession(headers=self.headers)
@@ -64,7 +94,7 @@ class WildBerriesAPI:
                 if response.content_type == "application/json":
                     return await response.json()
                 else:
-                    return response.text
+                    return await response.text()
         except aiohttp.ClientError as e:
             logger.error(f"Error occupied while sending request to {url}:\n{e}")
             if retries > 0:

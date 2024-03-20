@@ -1,4 +1,5 @@
 import unittest
+from .utils import image_url
 from .api import WildBerriesAPI
 
 
@@ -7,11 +8,14 @@ class TestWildBerriesAPI(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.api = WildBerriesAPI()
 
-    async def tearDown(self):
+    async def test_search(self):
+        search = await self.api.search(query="джинсы чёрные бананы")
+        print(search)
         await self.api.close()
 
-    async def test_search(self):
-        search = await self.api.search(query="русалка")
+    async def test_image_url_generation(self):
+        url = image_url(172229456)
+        self.assertIn("https://basket-12.wbbasket.ru/vol1722/part172229/172229456/images", url)
 
     async def test_base_get_request(self):
         data = {
@@ -32,3 +36,4 @@ class TestWildBerriesAPI(unittest.IsolatedAsyncioTestCase):
             request_method="get",
         )
         self.assertDictEqual(response, data)
+        await self.api.close()
