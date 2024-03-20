@@ -28,7 +28,8 @@ class WildBerriesAPI:
         self.headers = {"User-Agent": user_agent}
         self._session: Optional[aiohttp.ClientSession] = None
 
-    def search_data_to_products(self, products_json: dict) -> list[Product]:
+    @staticmethod
+    def search_data_to_products(products_json: dict) -> list[Product]:
         try:
             data = products_json.get("data").get("products")
         except AttributeError as e:
@@ -46,7 +47,6 @@ class WildBerriesAPI:
         return products
 
     async def search(self, query: str, page: int = 1) -> list[Product]:
-        # TODO: return Products dataclasses
         headers = {
             "x-queryid": get_query_id_for_search()
         }
