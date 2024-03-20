@@ -3,7 +3,7 @@ import json
 from dataclasses import dataclass
 from itertools import product as _product
 from typing import Any
-from typing import Generator
+from typing import Iterator
 from typing import Literal
 from typing import Optional
 
@@ -61,7 +61,7 @@ class WildBerriesAPI:
     @staticmethod
     def get_combinations(
         *products: list[Product], max_repeats: int = 3
-    ) -> Generator[list[Product]]:
+    ) -> Iterator[list[Product]]:
         # TODO: test
         """
         Возращает комбинации одежды. В *products перечисляем list[Product]
