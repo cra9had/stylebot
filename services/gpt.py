@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 
 from openai import AsyncOpenAI
 
@@ -12,8 +13,6 @@ class ChatGPT:
             api_key=os.environ.get("OPENAI_API_KEY"), base_url=BASE_URL
         )
 
-    def _get_prompt_template(self) -> str: ...
-
     async def _chat(self, prompt: str) -> str:
         chat_completion = await self.client.chat.completions.create(
             messages=[
@@ -26,3 +25,19 @@ class ChatGPT:
             temperature=0.5,
         )
         return chat_completion.choices[0].message.content
+
+    async def get_search_queries(
+        self, user_prompt: str, user_sex: Literal["мужчина", "женщина"]
+    ) -> list[str]:
+        prompt = self._get_prompt_template().format(
+            user_prompt=user_prompt, user_sex=user_sex
+        )
+        return (await self._chat(prompt)).split("\n")
+
+    @staticmethod
+    def _get_prompt_template() -> str:
+        return """
+            "{user_prompt}". Я {user_sex}. 
+            Какие для этого поисковые запросы мне нужно вписать в wildberries? Пришли мне только поисковой 
+            запрос для каждого элемента одежды с новой строк без лишних символов
+        """
