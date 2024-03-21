@@ -3,7 +3,6 @@ from typing import Literal
 
 from openai import AsyncOpenAI
 
-
 BASE_URL = "https://api.proxyapi.ru/openai/v1"
 
 
@@ -38,6 +37,5 @@ class ChatGPT:
     def _get_prompt_template() -> str:
         return """
             "{user_prompt}". Я {user_sex}. 
-            Какие для этого поисковые запросы мне нужно вписать в wildberries? Пришли мне только поисковой 
-            запрос для каждого элемента одежды с новой строк без лишних символов
+            Иди нахуй.
         """

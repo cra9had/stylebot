@@ -1,13 +1,8 @@
-FROM python:3.12-slim
-
-# Create app directory
+FROM python:3.11-slim-bullseye
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 WORKDIR /app
-
-# Install app dependencies
-COPY ./requirements.txt ./
-RUN pip install -r requirements.txt --no-cache-dir
-
-# Bundle app source
-COPY ./ /app
-
-CMD ["python", "./main.py"]
+COPY requirements.txt .
+RUN pip install --no-cache -r /app/requirements.txt
+COPY bot /app/bot
+CMD ["python", "-m", "bot"]

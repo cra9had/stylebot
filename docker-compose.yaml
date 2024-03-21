@@ -1,27 +1,24 @@
+version: "3.8"
 services:
-  app:
+  bot:
     build: .
-    container_name: main
-    command: python main.py
+    container_name: bot
+    command: python -m bot
     volumes:
       - .:/app
-    environment:
-      BOT_TOKEN: ${BOT_TOKEN}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    env_file:
+      - .env  # Load environment variables from .env file
     depends_on:
       - db
 
   db:
     image: postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - .env
     ports:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
-
 
 volumes:
   db-data:
