@@ -19,6 +19,12 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+      #- ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    # Set environment variables for initialization
+    environment:
+      POSTGRES_USER: jopa
+      POSTGRES_PASSWORD: botPass
+      POSTGRES_DB: jopaDb
 
 volumes:
   db-data:
