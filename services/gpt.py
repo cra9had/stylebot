@@ -28,14 +28,14 @@ class ChatGPT:
     async def get_search_queries(
         self, user_prompt: str, user_sex: Literal["мужчина", "женщина"]
     ) -> list[str]:
-        prompt = self._get_prompt_template().format(
-            user_prompt=user_prompt, user_sex=user_sex
-        )
-        return (await self._chat(prompt)).split("\n")
+        prompt = self._get_prompt_template().format(user_prompt=user_prompt)
+        prompts = []
+        for query in (await self._chat(prompt)).split("\n"):
+            prompts.append(f"{query} {user_sex}")
+        return prompts
 
     @staticmethod
     def _get_prompt_template() -> str:
         return """
-            "{user_prompt}". Я {user_sex}. 
-            Иди нахуй.
+            {user_prompt} Какая одежда присутствует в предложении? Пришли лишь одежду, каждую с новой строки без лишних символов и преамбул
         """
