@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 from dataclasses import dataclass
 from itertools import product as _product
 from typing import Any
@@ -59,17 +60,16 @@ class WildBerriesAPI:
         return products
 
     @staticmethod
-    def get_combinations(
-        *products: list[Product], max_repeats: int = 3
-    ) -> Iterator[list[Product]]:
+    def get_combinations(*products: list[Product]) -> list[tuple[Product]]:
         # TODO: test
         """
         Возращает комбинации одежды. В *products перечисляем list[Product]
         :keyword max_repeats - Максимальное кол-во комбинаций с одним элементомЯ
         """
-        for combination in _product(*products):
-            if max(combination.count(item) for item in set(combination)) <= max_repeats:
-                yield combination
+        # return list(_product(*products))
+        combined = list(zip(*products))
+        random.shuffle(combined)
+        return combined
 
     async def search(self, query: str, page: int = 1) -> list[Product]:
         headers = {"x-queryid": get_query_id_for_search()}

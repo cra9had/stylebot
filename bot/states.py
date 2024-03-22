@@ -1,4 +1,10 @@
-from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.state import State
+from aiogram.fsm.state import StatesGroup
+
+
+class SearchStates(StatesGroup):
+    prompt = State()
+    searching = State()
 
 
 class Measures(StatesGroup):

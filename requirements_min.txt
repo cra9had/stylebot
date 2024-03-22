@@ -4,3 +4,4 @@ openai==1.14.2
 SQLAlchemy==2.0.28
 psycopg==3.1.18
 psycopg_binary==3.1.18
+loguru==0.7.2

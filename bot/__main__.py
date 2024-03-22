@@ -8,14 +8,17 @@ from aiogram import Dispatcher
 from aiogram.enums import ParseMode
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine
+
 from bot.db.models import Base
-from bot.handlers.start_cmd import r as start_router
 from bot.handlers.callbacks import r as callbacks_router
+from bot.handlers.search import router as search_router
+from bot.handlers.start_cmd import r as start_router
 from bot.middlewares.db import DbSessionMiddleware
 
 TOKEN = getenv("BOT_TOKEN")
 DB_URL = getenv("DB_URL")
 dp = Dispatcher()
+
 
 async def main() -> None:
 
@@ -28,8 +31,7 @@ async def main() -> None:
 
     dp.update.middleware(DbSessionMiddleware(session_pool=db_pool))
 
-    dp.include_routers(start_router,
-                       callbacks_router)
+    dp.include_routers(start_router, callbacks_router, search_router)
 
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
     await dp.start_polling(bot)
