@@ -15,7 +15,7 @@ class User(Base):
     body: Mapped["Body"] = relationship(back_populates="user")
 
     def __repr__(self):
-        return f"{self.tgname=}"
+        return f"{self.tg_id=} {self.tgname=}"
 
 
 class Body(Base):
@@ -27,3 +27,6 @@ class Body(Base):
     size: Mapped[str]
 
     user: Mapped["User"] = relationship(back_populates="body")
+
+    def __repr__(self):
+        return f'{self.sex=}, {self.age=}, {self.size=}'

@@ -1,21 +1,27 @@
-from typing import List
+from typing import List, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from bot.db.models import User
+from bot.db.models import User, Body
 
 
-async def get_users(session: AsyncSession) -> List[User]:
+async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence[User]:
     """
-    Gets users, that've already pressed /start once
+    Gets users (optionally with filter of tg_id)
 
+    :param tg_id: user tg_id
     :param session: SQLAlchemy DB session
     """
 
-    users_request = await session.execute(
-        select(User)
-    )
+    if not tg_id:
+        users_request = await session.execute(
+            select(User)
+        )
+    else:
+        users_request = await session.execute(
+            select(User).filter(User.tg_id == tg_id)
+        )
 
     return users_request.scalars().all()
 
@@ -29,18 +35,29 @@ async def add_user(session: AsyncSession, tg_id: int, tgname: str = None):
     else:
         user = User(tg_id=tg_id)
     session.add(user)
-    await session.commit()
+    # await session.commit()
 
 
 async def get_body(session: AsyncSession, tg_id: int):
     result = await session.execute(select(User).filter(User.tg_id == tg_id).options(selectinload(User.body)))
 
-    # Fetch the first row from the result synchronously
     user = result.fetchone()
 
-    # If user exists, return the body parameters associated with the user
     if user:
         return user[0].body
     else:
         return None
-                
+
+
+async def add_body(session: AsyncSession, tg_id: int, sex: str, age: int, size: str):
+    users = await get_users(session, tg_id)
+
+    if not users:
+        raise RuntimeError("BAD USER")
+
+    user = users[0]
+
+    body = Body(tg_id=tg_id, sex=sex, age=age, size=size)
+    user.body = body
+    session.add(body)
+    #await session.commit()

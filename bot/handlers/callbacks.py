@@ -2,10 +2,12 @@ from aiogram import Router, F
 from aiogram.filters import StateFilter
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_body_again
+from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_body_summary
 from bot.states import Measures
-from bot.cbdata import SizeChartFactory, SexPickFactory
+from bot.cbdata import SizeChartFactory, SexPickFactory, BodyConfirmFactory
+from bot.db.orm import add_body, get_body, get_users
 
 r = Router()
 
@@ -41,7 +43,6 @@ async def pressed_size_btn(callback: CallbackQuery, state: FSMContext, callback_
 
 @r.message(Measures.input_age)
 async def pressed_size_btn(message: Message, state: FSMContext):
-
     if not validate_age(message.text):
         return
 
@@ -57,8 +58,8 @@ async def pressed_size_btn(message: Message, state: FSMContext):
 
 
 @r.callback_query(SexPickFactory.filter(), Measures.input_sex)
-async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory, state: FSMContext):
-
+async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory, state: FSMContext,
+                          session: AsyncSession):
     await callback.message.delete()
     await state.update_data(sex=callback_data.gender)
 
@@ -72,5 +73,25 @@ async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory
         sex_text = 'Женщина'
 
     await state.clear()
-    await callback.message.answer(f'Ваши параметры:\nРазмер: {size}\nВозраст: {age}\nПол: {sex_text}', reply_markup=make_body_again())
 
+    await callback.message.answer(f'Ваши параметры:\nРазмер: {size}\nВозраст: {age}\nПол: {sex_text}',
+                                  reply_markup=make_body_summary(size=size, age=age, sex=sex))
+
+
+@r.callback_query(BodyConfirmFactory.filter())
+async def confirm_body(callback: CallbackQuery, session: AsyncSession, callback_data: BodyConfirmFactory):
+
+    sex, size, age = callback_data.sex, callback_data.size, callback_data.age
+
+    await add_body(session, tg_id=callback.message.from_user.id, sex=sex, size=size, age=age)
+
+    await callback.message.delete()
+    await callback.message.answer("Параметры тела добавлены.", reply_markup=None)
+
+
+@r.message(F.text == 'check')
+async def check_body(message: Message, session: AsyncSession):
+    body = await get_body(session, message.from_user.id)
+    user = await get_users(session, message.from_user.id)
+    print(user, body)
+    await message.answer(f'{user}, {body}')

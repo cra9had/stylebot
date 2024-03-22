@@ -8,3 +8,9 @@ class SizeChartFactory(CallbackData, prefix='sizes'):
 
 class SexPickFactory(CallbackData, prefix='sex'):
     gender: str
+
+
+class BodyConfirmFactory(CallbackData, prefix='body'):
+    size: str
+    age: int
+    sex: str

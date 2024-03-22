@@ -1,7 +1,7 @@
 from aiogram.types import KeyboardButton, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.cbdata import SizeChartFactory, SexPickFactory
+from bot.cbdata import SizeChartFactory, SexPickFactory, BodyConfirmFactory
 
 
 def make_sizes_kb():
@@ -36,11 +36,14 @@ def make_sex_kb():
     return builder.as_markup()
 
 
-def make_body_again():
+def make_body_summary(sex: str, age: int, size: str):
     builder = InlineKeyboardBuilder()
 
     builder.button(
         text='🔄 Заполнить заново', callback_data='re_enter_body_parameters'
+    )
+    builder.button(
+        text='✅ Подтвердить', callback_data=BodyConfirmFactory(age=age, size=size, sex=sex)
     )
 
     return builder.as_markup()
