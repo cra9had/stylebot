@@ -4,8 +4,8 @@ from aiogram.types import Message
 
 from sqlalchemy import select
 
-from db.models import User
-from db.orm import get_users, add_user
+from bot.db.models import User
+from bot.db.orm import add_user
 
 
 class UserExistsMiddleware(BaseMiddleware):

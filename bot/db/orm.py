@@ -1,7 +1,9 @@
 from typing import List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.models import User
+from sqlalchemy.orm import selectinload
+
+from bot.db.models import User
 
 
 async def get_users(session: AsyncSession) -> List[User]:
@@ -28,3 +30,17 @@ async def add_user(session: AsyncSession, tg_id: int, tgname: str = None):
         user = User(tg_id=tg_id)
     session.add(user)
     await session.commit()
+
+
+async def get_body(session: AsyncSession, tg_id: int):
+    result = await session.execute(select(User).filter(User.tg_id == tg_id).options(selectinload(User.body)))
+
+    # Fetch the first row from the result synchronously
+    user = result.fetchone()
+
+    # If user exists, return the body parameters associated with the user
+    if user:
+        return user[0].body
+    else:
+        return None
+                

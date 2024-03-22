@@ -8,8 +8,8 @@ from aiogram import Dispatcher
 from aiogram.enums import ParseMode
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine
-from db.models import Base
-from bot.handlers.default_cmd import r as start_router
+from bot.db.models import Base
+from bot.handlers.start_cmd import r as start_router
 from bot.middlewares.db import DbSessionMiddleware
 
 TOKEN = getenv("BOT_TOKEN")
