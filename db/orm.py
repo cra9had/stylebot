@@ -18,10 +18,13 @@ async def get_users(session: AsyncSession) -> List[User]:
     return users_request.scalars().all()
 
 
-async def add_user(session: AsyncSession, tgname: str):
+async def add_user(session: AsyncSession, tg_id: int, tgname: str = None):
     """
     Adds new user on patching the /start message
     """
-    user = User(tgname=tgname)
+    if tgname:
+        user = User(tg_id=tg_id, tgname=tgname)
+    else:
+        user = User(tg_id=tg_id)
     session.add(user)
     await session.commit()
