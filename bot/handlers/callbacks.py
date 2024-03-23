@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_body_summary
 from bot.states import Measures
 from bot.cbdata import SizeChartFactory, SexPickFactory, BodyConfirmFactory
-from bot.db.orm import add_body, get_users, get_bodies, check_body_for_tg_id
+from bot.db.orm import add_body, get_users, get_bodies
 
 r = Router()
 
@@ -59,7 +59,7 @@ async def pressed_size_btn(message: Message, state: FSMContext):
 
 @r.callback_query(SexPickFactory.filter(), Measures.input_sex)
 async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory, state: FSMContext,
-                          session_pool: async_sessionmaker):
+                          session: AsyncSession):
     await callback.message.delete()
     await state.update_data(sex=callback_data.gender)
 
@@ -79,22 +79,22 @@ async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory
 
 
 @r.callback_query(BodyConfirmFactory.filter())
-async def confirm_body(callback: CallbackQuery, session_pool: async_sessionmaker, callback_data: BodyConfirmFactory):
+async def confirm_body(callback: CallbackQuery, session: AsyncSession, callback_data: BodyConfirmFactory):
 
     sex, size, age = callback_data.sex, callback_data.size, callback_data.age
 
-    if not await check_body_for_tg_id(session_pool, callback.message.from_user.id):
-        await add_body(session_pool=session_pool, tg_id=callback.message.from_user.id, sex='F', age=12, size='L')
+    await add_body(session=session, tg_id=callback.message.chat.id, sex=sex, age=age, size=size)
 
     await callback.message.delete()
-    await callback.message.answer("Параметры тела добавлены.", reply_markup=None)
+    await callback.message.answer(f"Параметры добавлены.", reply_markup=None)
 
 
 @r.message(F.text == 'check')
-async def check_body(message: Message, session_pool: async_sessionmaker):
+async def check_body(message: Message, session: AsyncSession):
+    # TODO: Remove
+    # Debug information
 
-    users = await get_users(session_pool)
+    user = await get_users(session, message.from_user.id)
+    bodies = await get_bodies(session)
 
-    bodies = await get_bodies(session_pool)
-
-    await message.answer(f'{users}, {bodies}')
+    await message.answer(f'{user} {user.body}')
