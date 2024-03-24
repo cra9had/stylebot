@@ -103,12 +103,13 @@ class WildBerriesAPI:
             "ab_testid": "false",
             "appType": 1,  # 1 - DESKTOP, 32 - ANDROID, 64 - IOS
             "curr": "rub",
+            "dest": -1257786,
             "query": query,
             "resultset": "catalog",
             "sort": "popular",
             "spp": 30,
             "suppressSpellcheck": "false",
-            "dest": -1257786,
+            "uclusters": 1,
         }
         if page != 1:
             params["page"] = page
