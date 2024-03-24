@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import MissingGreenlet
 from sqlalchemy.orm import selectinload
 
-from bot.db.models import User, Parameters
+from bot.db.models import User, Body
 
 
 async def get_users(session: AsyncSession, tg_id: int | None = None) -> ScalarResult[User]:
@@ -29,8 +29,6 @@ async def get_users(session: AsyncSession, tg_id: int | None = None) -> ScalarRe
         return users_request.scalar()
 
 
-
-
 async def add_user(session: AsyncSession, tg_id: int, tgname: str = None):
     """
     Adds new user on patching the /start message
@@ -47,17 +45,17 @@ async def add_user(session: AsyncSession, tg_id: int, tgname: str = None):
 
 
 async def get_bodies(session: AsyncSession):
-    request = await session.execute(select(Parameters))
+    request = await session.execute(select(Body))
 
-    return request.scalars().all()
+    return request.scalars() .all()
 
 
-async def add_body(session: AsyncSession, tg_id: int, sex: str, age: int, size: str):
+async def add_body(session: AsyncSession, tg_id: int, sex: str, age: int, size):
     try:
-        result = await session.execute(select(Parameters).filter(Parameters.tg_id == tg_id))
+        result = await session.execute(select(Body).filter(Body.tg_id == tg_id))
         body = result.scalar_one_or_none()
         if not body:
-            body = Parameters(tg_id=tg_id, sex=sex, age=age, size=size)
+            body = Body(tg_id=tg_id, sex=sex, age=age, size=size)
             session.add(body)
             await session.commit()
         else:

@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.db.models import Parameters
+from bot.db.models import Body
 from bot.middlewares.user_exists import UserExistsMiddleware
 from bot.keyboards.profile_kbs import make_profile_kb
 from services.gpt import ChatGPT
@@ -20,7 +20,7 @@ r.message.middleware(UserExistsMiddleware())
 @r.message(Command("start"))
 async def start_cmd(message: Message, session: AsyncSession, state: FSMContext):
 
-    result = await session.execute(select(Parameters).filter(Parameters.tg_id == message.from_user.id))
+    result = await session.execute(select(Body).filter(Body.tg_id == message.from_user.id))
     body = result.scalar_one_or_none()
 
     if not body:

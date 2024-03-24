@@ -17,23 +17,20 @@ class User(Base):
     tg_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     tgname: Mapped[Optional[str]]
 
-    body: Mapped["Parameters"] = relationship(back_populates="user")
+    body: Mapped["Body"] = relationship(back_populates="user")
 
     def __repr__(self):
         return f"{self.tg_id=} {self.tgname=}"
 
 
-class Parameters(Base):
-    __tablename__ = "bodies"
+class Body(Base):
+    __tablename__ = "parameters"
     tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"), primary_key=True)
     sex: Mapped[str]
     age: Mapped[int]
     size: Mapped[str]
 
-    long: Mapped[str]
-    lat: Mapped[str]
-
-    user: Mapped["User"] = relationship(back_populates="params")
+    user: Mapped["User"] = relationship(back_populates="body")
 
     def __repr__(self):
         return f'{self.tg_id=} {self.sex=}, {self.age=}, {self.size=}'
@@ -51,7 +48,7 @@ async def get_session() -> AsyncSession:
 
 async def init_models():
     async with engine.begin() as conn:
-        #await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
 
