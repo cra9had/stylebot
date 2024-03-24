@@ -1,3 +1,6 @@
+import dataclasses
+import json
+
 from aiogram import F
 from aiogram import Router
 from aiogram.fsm.context import FSMContext
@@ -10,6 +13,7 @@ from bot.keyboards import search as kb
 from bot.states import SearchStates
 from services.gpt import ChatGPT
 from wb.api import WildBerriesAPI
+from wb.data import Product
 
 router = Router()
 
@@ -42,7 +46,7 @@ async def search_prompt(message: Message, state: FSMContext):
 async def paginate_search(message: Message, state: FSMContext):
     current_index = (await state.get_data()).get("current_index")
     combinations = (await state.get_data()).get("combinations")
-    products = [product for product in combinations[current_index]]
+    products = [Product(**product) for product in combinations[current_index]]
     summary_price = sum([product.price for product in products])
     media_group = MediaGroupBuilder(
         caption=f"\n".join([product.name for product in products])
@@ -55,7 +59,10 @@ async def paginate_search(message: Message, state: FSMContext):
 
 
 @router.message(F.text == "👎", SearchStates.searching)
+@router.message(F.text == "🔍Продолжить поиск", SearchStates.searching)
 async def next_paginate(message: Message, state: FSMContext):
+    if message.text == "🔍Продолжить поиск":
+        await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
     await state.update_data(
         {"current_index": (await state.get_data()).get("current_index", 0) + 1}
     )
@@ -66,12 +73,12 @@ async def next_paginate(message: Message, state: FSMContext):
 async def next_paginate(message: Message, state: FSMContext):
     current_index = (await state.get_data()).get("current_index")
     combinations = (await state.get_data()).get("combinations")
-    await message.answer(
-        f"\n".join(
-            *[
-                f"<a href='https://www.wildberries.ru/catalog/{product.id}/detail.aspx'>{product.name}</a>: {product.id}"
-                for product in combinations[current_index]
-            ]
-        )
+    products = [Product(**product) for product in combinations[current_index]]
+    answer = "Артикулы:\n" + f"\n".join(
+        [
+            f"<a href='https://www.wildberries.ru/catalog/{product.id}/detail.aspx'>{product.name}</a>: "
+            f"<code>{product.id}</code>"
+            for product in products
+        ]
     )
-    # await paginate_search(message, state)
+    await message.answer(answer, reply_markup=kb.get_continue_keyboard())

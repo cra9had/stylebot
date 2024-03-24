@@ -6,17 +6,17 @@ from os import getenv
 from aiogram import Bot
 from aiogram import Dispatcher
 from aiogram.enums import ParseMode
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-from sqlalchemy.ext.asyncio import create_async_engine
+from aiogram.fsm.storage.redis import RedisStorage
+from redis.asyncio.client import Redis
 
-from bot.db.models import async_pool
 from bot.handlers.callbacks import r as callbacks_router
 from bot.handlers.search import router as search_router
 from bot.handlers.start_cmd import r as start_router
 from bot.middlewares.db import DbSessionMiddleware
 
 TOKEN = getenv("BOT_TOKEN")
-dp = Dispatcher()
+redis_client = Redis.from_url("redis://redis:6379/1")
+dp = Dispatcher(storage=RedisStorage(redis=redis_client))
 
 
 async def main() -> None:

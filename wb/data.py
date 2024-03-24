@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from dataclasses import dataclass
 
 
@@ -18,3 +19,6 @@ class Product:
     price: int
     name: str
     image_url: str
+
+    def to_json(self):
+        return asdict(self)
