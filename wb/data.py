@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, asdict
 
 
 @dataclass
@@ -18,3 +19,6 @@ class Product:
     price: int
     name: str
     image_url: str
+
+    def to_json(self):
+        return json.dumps(asdict(self))

@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_body_summary
-from bot.states import Measures
+from bot.states import ProfileParameters
 from bot.cbdata import SizeChartFactory, SexPickFactory, BodyConfirmFactory
 from bot.db.orm import add_body, get_users, get_bodies
 
@@ -24,16 +24,16 @@ def validate_age(age_string: str) -> bool:
 
 @r.callback_query(F.data.in_(['input_sizes', 're_enter_body_parameters']))
 async def input_sizes(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(Measures.input_size)
+    await state.set_state(ProfileParameters.input_size)
 
     await callback.message.delete()
     await callback.message.answer(text="Выберите размер:", reply_markup=make_sizes_kb())
 
 
-@r.callback_query(SizeChartFactory.filter(), Measures.input_size)
+@r.callback_query(SizeChartFactory.filter(), ProfileParameters.input_size)
 async def pressed_size_btn(callback: CallbackQuery, state: FSMContext, callback_data: SizeChartFactory):
     await callback.message.delete()
-    await state.set_state(Measures.input_age)
+    await state.set_state(ProfileParameters.input_age)
 
     await state.update_data(size=callback_data.size)
     msg = await callback.message.answer(f'Введите свой возраст:', reply_markup=None)
@@ -41,7 +41,7 @@ async def pressed_size_btn(callback: CallbackQuery, state: FSMContext, callback_
     await state.update_data(msg_delete=msg)
 
 
-@r.message(Measures.input_age)
+@r.message(ProfileParameters.input_age)
 async def pressed_size_btn(message: Message, state: FSMContext):
     if not validate_age(message.text):
         return
@@ -52,12 +52,12 @@ async def pressed_size_btn(message: Message, state: FSMContext):
     msg = data['msg_delete']
     await msg.delete()
 
-    await state.set_state(Measures.input_sex)
+    await state.set_state(ProfileParameters.input_sex)
     await state.update_data(age=message.text)
     await message.answer(f'Выберите свой пол:', reply_markup=make_sex_kb())
 
 
-@r.callback_query(SexPickFactory.filter(), Measures.input_sex)
+@r.callback_query(SexPickFactory.filter(), ProfileParameters.input_sex)
 async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory, state: FSMContext,
                           session: AsyncSession):
     await callback.message.delete()
@@ -68,9 +68,9 @@ async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory
     size, age, sex = data['size'], data['age'], data['sex']
 
     if sex == 'male':
-        sex_text = 'Мужчина'
+        sex_text = 'Мужчина/мальчик'
     else:
-        sex_text = 'Женщина'
+        sex_text = 'Девушка/девочка'
 
     await state.clear()
 

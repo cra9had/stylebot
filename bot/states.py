@@ -7,7 +7,9 @@ class SearchStates(StatesGroup):
     searching = State()
 
 
-class Measures(StatesGroup):
+class ProfileParameters(StatesGroup):
     input_sex = State()
     input_age = State()
     input_size = State()
+    input_city = State()
+
