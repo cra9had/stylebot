@@ -51,7 +51,7 @@ class WildBerriesAPI:
                 products.append(
                     Product(
                         id=product.get("id"),
-                        price=product.get("sizes")[0].get("price").get("basic")
+                        price=product.get("sizes")[0].get("price").get("total")
                         // 100,  # TODO: unsafe, maybe refactor?!
                         name=product.get("name"),
                         image_url=image_url(product.get("id"), "BIG"),
@@ -63,12 +63,19 @@ class WildBerriesAPI:
         return products
 
     @staticmethod
-    def get_combinations(*products: list[Product]) -> list[tuple[Product]]:
+    def get_combinations(*products: list[Product]) -> list[tuple[dict]]:
         """
         Возращает комбинации одежды. В *products перечисляем list[Product]
         :keyword max_repeats - Максимальное кол-во комбинаций с одним элементомЯ
         """
-        combined = list(zip(*products))
+        combined = list(
+            zip(
+                *[
+                    [product.to_json() for product in products_list]
+                    for products_list in products
+                ]
+            )
+        )
         random.shuffle(combined)
         return combined
 
@@ -103,12 +110,13 @@ class WildBerriesAPI:
             "ab_testid": "false",
             "appType": 1,  # 1 - DESKTOP, 32 - ANDROID, 64 - IOS
             "curr": "rub",
+            "dest": filters.dest,
             "query": query,
             "resultset": "catalog",
             "sort": "popular",
             "spp": 30,
             "suppressSpellcheck": "false",
-            "dest": -1257786,
+            "uclusters": 1,
         }
         if page != 1:
             params["page"] = page
