@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_body_summary
+from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_body_summary, make_city_choice_kb
 from bot.states import ProfileParameters
 from bot.cbdata import SizeChartFactory, SexPickFactory, BodyConfirmFactory
 from bot.db.orm import add_body, get_users, get_bodies
@@ -58,24 +58,33 @@ async def pressed_size_btn(message: Message, state: FSMContext, bot: Bot):
 
 
 @r.callback_query(SexPickFactory.filter(), ProfileParameters.input_sex)
-async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory, state: FSMContext,
-                          session: AsyncSession):
+async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory, state: FSMContext):
 
     await callback.message.delete()
     await state.update_data(sex=callback_data.gender)
+
+    await state.set_state(ProfileParameters.input_city)
+    await callback.message.answer('Вы можете отправить геолокацию \
+    чтобы получать актуальные сроки доставки одежды со склада продавца до вашего города.',
+                                  reply_markup=make_city_choice_kb())
+
+
+@r.message(ProfileParameters.input_city)
+async def get_city(message: Message, state: FSMContext):
+    if message.location:
+        await message.answer(f'{message.location.latitude}, {message.location.longitude}')
+        return
+    else:
+        await message.answer(f'Москва')
+        return
 
     data = await state.get_data()
 
     size, age, sex = data['size'], data['age'], data['sex']
 
-    if sex == 'male':
-        sex_text = 'Мужчина/мальчик'
-    else:
-        sex_text = 'Девушка/девочка'
-
     await state.clear()
 
-    await callback.message.answer(f'Ваши параметры:\nРазмер: {size}\nВозраст: {age}\nПол: {sex_text}',
+    await message.answer(f'Ваши параметры:\nРазмер: {size}\nВозраст: {age}\nПол: {sex}',
                                   reply_markup=make_body_summary(size=size, age=age, sex=sex))
 
 
@@ -90,9 +99,9 @@ async def confirm_body(callback: CallbackQuery, session: AsyncSession, callback_
     await callback.message.answer(f"Параметры добавлены.", reply_markup=None)
 
 
+# TODO: Remove
 @r.message(F.text == 'check')
 async def check_body(message: Message, session: AsyncSession):
-    # TODO: Remove
     # Debug information
 
     user = await get_users(session, message.from_user.id)

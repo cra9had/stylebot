@@ -11,5 +11,6 @@ class ProfileParameters(StatesGroup):
     input_sex = State()
     input_age = State()
     input_size = State()
+
     input_city = State()
 

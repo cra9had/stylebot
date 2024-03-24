@@ -9,7 +9,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio.client import Redis
 
-from bot.handlers.callbacks import r as callbacks_router
+from bot.handlers.registration import r as callbacks_router
 from bot.handlers.search import router as search_router
 from bot.handlers.start_cmd import r as start_router
 from bot.middlewares.db import DbSessionMiddleware

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import MissingGreenlet
 from sqlalchemy.orm import selectinload
 
-from bot.db.models import User, Body
+from bot.db.models import User, Parameters
 
 
 async def get_users(session: AsyncSession, tg_id: int | None = None) -> ScalarResult[User]:
@@ -47,17 +47,17 @@ async def add_user(session: AsyncSession, tg_id: int, tgname: str = None):
 
 
 async def get_bodies(session: AsyncSession):
-    request = await session.execute(select(Body))
+    request = await session.execute(select(Parameters))
 
     return request.scalars().all()
 
 
 async def add_body(session: AsyncSession, tg_id: int, sex: str, age: int, size: str):
     try:
-        result = await session.execute(select(Body).filter(Body.tg_id == tg_id))
+        result = await session.execute(select(Parameters).filter(Parameters.tg_id == tg_id))
         body = result.scalar_one_or_none()
         if not body:
-            body = Body(tg_id=tg_id, sex=sex, age=age, size=size)
+            body = Parameters(tg_id=tg_id, sex=sex, age=age, size=size)
             session.add(body)
             await session.commit()
         else:

@@ -1,5 +1,5 @@
 from aiogram.types import KeyboardButton, InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 from bot.cbdata import SizeChartFactory, SexPickFactory, BodyConfirmFactory
 
@@ -34,6 +34,21 @@ def make_sex_kb():
     builder.adjust(2)
 
     return builder.as_markup()
+
+
+def make_city_choice_kb():
+    builder = ReplyKeyboardBuilder()
+
+    builder.add(
+        KeyboardButton(text='Отправить геолокацию', request_location=True)
+    )
+    builder.add(
+        KeyboardButton(text='Не отправлять')
+    )
+
+    builder.adjust(1)
+
+    return builder.as_markup(resize_keyboard=True)
 
 
 def make_body_summary(sex: str, age: int, size: str):
