@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.filters import StateFilter
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
@@ -38,11 +38,11 @@ async def pressed_size_btn(callback: CallbackQuery, state: FSMContext, callback_
     await state.update_data(size=callback_data.size)
     msg = await callback.message.answer(f'Введите свой возраст:', reply_markup=None)
 
-    await state.update_data(msg_delete=msg)
+    await state.update_data(msg_delete=msg.message_id)
 
 
 @r.message(ProfileParameters.input_age)
-async def pressed_size_btn(message: Message, state: FSMContext):
+async def pressed_size_btn(message: Message, state: FSMContext, bot: Bot):
     if not validate_age(message.text):
         return
 
@@ -50,7 +50,7 @@ async def pressed_size_btn(message: Message, state: FSMContext):
 
     data = await state.get_data()
     msg = data['msg_delete']
-    await msg.delete()
+    await message.bot.delete_message(message.chat.id, msg)
 
     await state.set_state(ProfileParameters.input_sex)
     await state.update_data(age=message.text)
@@ -60,6 +60,7 @@ async def pressed_size_btn(message: Message, state: FSMContext):
 @r.callback_query(SexPickFactory.filter(), ProfileParameters.input_sex)
 async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory, state: FSMContext,
                           session: AsyncSession):
+
     await callback.message.delete()
     await state.update_data(sex=callback_data.gender)
 
@@ -97,4 +98,4 @@ async def check_body(message: Message, session: AsyncSession):
     user = await get_users(session, message.from_user.id)
     bodies = await get_bodies(session)
 
-    await message.answer(f'{user} {user.body}')
+    await message.answer(f'{user}')
