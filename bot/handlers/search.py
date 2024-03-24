@@ -11,7 +11,6 @@ from bot.states import SearchStates
 from services.gpt import ChatGPT
 from wb.api import WildBerriesAPI
 
-
 router = Router()
 
 
@@ -69,10 +68,10 @@ async def next_paginate(message: Message, state: FSMContext):
     combinations = (await state.get_data()).get("combinations")
     await message.answer(
         f"\n".join(
-            [
+            *[
                 f"<a href='https://www.wildberries.ru/catalog/{product.id}/detail.aspx'>{product.name}</a>: {product.id}"
+                for product in combinations[current_index]
             ]
-            for product in combinations[current_index]
         )
     )
     # await paginate_search(message, state)

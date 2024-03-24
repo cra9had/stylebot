@@ -45,16 +45,21 @@ class WildBerriesAPI:
             raise WildBerriesApiError("WildBerries API didn't return products")
 
         products = []
+        logger.debug(products_json)
         for product in data:
-            products.append(
-                Product(
-                    id=product.get("id"),
-                    price=product.get("sizes")[0].get("price").get("basic")
-                    // 100,  # TODO: unsafe, maybe refactor?!
-                    name=product.get("name"),
-                    image_url=image_url(product.get("id"), "BIG"),
+            try:
+                products.append(
+                    Product(
+                        id=product.get("id"),
+                        price=product.get("sizes")[0].get("price").get("basic")
+                        // 100,  # TODO: unsafe, maybe refactor?!
+                        name=product.get("name"),
+                        image_url=image_url(product.get("id"), "BIG"),
+                    )
                 )
-            )
+            except AttributeError as r:
+                logger.error(r)
+                continue
         return products
 
     @staticmethod
@@ -103,7 +108,7 @@ class WildBerriesAPI:
             "sort": "popular",
             "spp": 30,
             "suppressSpellcheck": "false",
-            **asdict(filters),
+            "dest": -1257786,
         }
         if page != 1:
             params["page"] = page
@@ -142,7 +147,9 @@ class WildBerriesAPI:
 
         try:
             async with method(url=url, params=params, data=data, **kwargs) as response:
+                logger.warning(response.status)
                 if response.content_type == "application/json":
+
                     return await response.json()
                 else:
                     return await response.text()
