@@ -1,6 +1,8 @@
 import unittest
 
 from wb.api import WildBerriesAPI
+from wb.data import Coordinates
+from wb.data import Product
 from wb.utils import image_url
 
 
@@ -10,6 +12,8 @@ class TestWildBerriesAPI(unittest.IsolatedAsyncioTestCase):
 
     async def test_search(self):
         search = await self.api.search(query="джинсы чёрные бананы")
+        print(search)
+        self.assertNotEqual(search, [])
         await self.api.close()
 
     async def test_image_url_generation(self):
@@ -17,6 +21,11 @@ class TestWildBerriesAPI(unittest.IsolatedAsyncioTestCase):
         self.assertIn(
             "https://basket-12.wbbasket.ru/vol1722/part172229/172229456/images", url
         )
+
+    async def test_dist_id(self):
+        dist = await self.api.get_dist_id(Coordinates(55.752, 37.615))
+        self.assertEqual(dist, -1257786)
+        await self.api.close()
 
     async def test_base_get_request(self):
         data = {
