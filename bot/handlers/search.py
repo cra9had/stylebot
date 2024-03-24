@@ -44,8 +44,10 @@ async def paginate_search(message: Message, state: FSMContext):
     current_index = (await state.get_data()).get("current_index")
     combinations = (await state.get_data()).get("combinations")
     products = [product for product in combinations[current_index]]
+    summary_price = sum([product.price for product in products])
     media_group = MediaGroupBuilder(
         caption=f"\n".join([product.name for product in products])
+        + f"\n\n<b>Общая цена: {summary_price}₽</b>"
     )
     for product in products:
         media_group.add(type="photo", media=URLInputFile(product.image_url))
@@ -59,3 +61,18 @@ async def next_paginate(message: Message, state: FSMContext):
         {"current_index": (await state.get_data()).get("current_index", 0) + 1}
     )
     await paginate_search(message, state)
+
+
+@router.message(F.text == "👍", SearchStates.searching)
+async def next_paginate(message: Message, state: FSMContext):
+    current_index = (await state.get_data()).get("current_index")
+    combinations = (await state.get_data()).get("combinations")
+    await message.answer(
+        f"\n".join(
+            [
+                f"<a href='https://www.wildberries.ru/catalog/{product.id}/detail.aspx'>{product.name}</a>: {product.id}"
+            ]
+            for product in combinations[current_index]
+        )
+    )
+    # await paginate_search(message, state)
