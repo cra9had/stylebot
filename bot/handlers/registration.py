@@ -4,12 +4,20 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_body_summary, make_city_choice_kb
+from bot.db.models import User
+from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_params_sum_kb, make_city_choice_kb
 from bot.states import ProfileParameters
-from bot.cbdata import SizeChartFactory, SexPickFactory, BodyConfirmFactory
-from bot.db.orm import add_body, get_users, get_bodies
+from bot.cbdata import SizeChartFactory, SexPickFactory, ParamsConfirmFactory
+from bot.db.orm import add_body, get_users, get_bodies, add_geo, get_locations
+
+from wb.api import WildBerriesAPI
+from wb.data import Coordinates
 
 r = Router()
+wb_api = WildBerriesAPI()
+
+DEFAULT_LATITUDE = 55.86448
+DEFAULT_LONGITUDE = 37.59393
 
 
 def validate_age(age_string: str) -> bool:
@@ -71,30 +79,39 @@ async def pressed_sex_btn(callback: CallbackQuery, callback_data: SexPickFactory
 
 @r.message(ProfileParameters.input_city)
 async def get_city(message: Message, state: FSMContext):
+    # TODO: Remove debug info
+    # DEBUG INFORMATION
+    # if message.location:
+    #     await message.answer(f'{message.location.latitude}, {message.location.longitude}')
+    # else:
+    #     await message.answer(f'Москва')
+
     if message.location:
-        await message.answer(f'{message.location.latitude}, {message.location.longitude}')
-        return
+        dest_id = await wb_api.get_dist_id(Coordinates(latitude=message.location.latitude, longitude=message.location.longitude))
     else:
-        await message.answer(f'Москва')
-        return
+        dest_id = await wb_api.get_dist_id(
+            Coordinates(latitude=DEFAULT_LATITUDE, longitude=DEFAULT_LONGITUDE))
 
     data = await state.get_data()
-
     size, age, sex = data['size'], data['age'], data['sex']
 
     await state.clear()
 
-    await message.answer(f'Ваши параметры:\nРазмер: {size}\nВозраст: {age}\nПол: {sex}',
-                                  reply_markup=make_body_summary(size=size, age=age, sex=sex))
+    await message.answer(f'Город_number: {dest_id}')
+
+    await message.answer(f'Ваши параметры:\nРазмер: {size}\nВозраст: {age}\nПол: {sex}\n',
+                                  reply_markup=make_params_sum_kb(size=size,
+                                                                  age=age,
+                                                                  sex=sex, dest_id=dest_id))
 
 
-@r.callback_query(BodyConfirmFactory.filter())
-async def confirm_body(callback: CallbackQuery, session: AsyncSession, callback_data: BodyConfirmFactory):
+@r.callback_query(ParamsConfirmFactory.filter())
+async def confirm_body(callback: CallbackQuery, session: AsyncSession, callback_data: ParamsConfirmFactory):
 
     sex, size, age = callback_data.sex, callback_data.size, callback_data.age
 
     await add_body(session=session, tg_id=callback.message.chat.id, sex=sex, age=age, size=size)
-
+    await add_geo(session=session, tg_id=callback.message.chat.id, dest_id=callback_data.dest_id)
     await callback.message.delete()
     await callback.message.answer(f"Параметры добавлены.", reply_markup=None)
 
@@ -104,7 +121,8 @@ async def confirm_body(callback: CallbackQuery, session: AsyncSession, callback_
 async def check_body(message: Message, session: AsyncSession):
     # Debug information
 
-    user = await get_users(session, message.from_user.id)
+    user: User = await get_users(session, message.chat.id)
     bodies = await get_bodies(session)
+    geos = await get_locations(session)
 
-    await message.answer(f'{user}')
+    await message.answer(f'{user}, {user.geo}')

@@ -18,13 +18,14 @@ class User(Base):
     tgname: Mapped[Optional[str]]
 
     body: Mapped["Body"] = relationship(back_populates="user")
+    geo: Mapped["Geo"] = relationship(back_populates="user")
 
     def __repr__(self):
         return f"{self.tg_id=} {self.tgname=}"
 
 
 class Body(Base):
-    __tablename__ = "parameters"
+    __tablename__ = "bodies"
     tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"), primary_key=True)
     sex: Mapped[str]
     age: Mapped[int]
@@ -34,6 +35,18 @@ class Body(Base):
 
     def __repr__(self):
         return f'{self.tg_id=} {self.sex=}, {self.age=}, {self.size=}'
+
+
+class Geo(Base):
+    __tablename__ = 'user_location'
+
+    tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"), primary_key=True)
+    wb_city_id: Mapped[int]
+
+    user: Mapped["User"] = relationship(back_populates="geo")
+
+    def __repr__(self):
+        return f'{self.tg_id=} {self.wb_city_id=}'
 
 
 DATABASE_URL = getenv("DB_URL")

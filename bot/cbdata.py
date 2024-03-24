@@ -10,7 +10,8 @@ class SexPickFactory(CallbackData, prefix='sex'):
     gender: str
 
 
-class BodyConfirmFactory(CallbackData, prefix='body'):
+class ParamsConfirmFactory(CallbackData, prefix='params'):
     size: str
     age: int
     sex: str
+    dest_id: int
