@@ -1,3 +1,6 @@
+import dataclasses
+import json
+
 from aiogram import F
 from aiogram import Router
 from aiogram.fsm.context import FSMContext
@@ -5,22 +8,27 @@ from aiogram.types import CallbackQuery
 from aiogram.types import Message
 from aiogram.types import URLInputFile
 from aiogram.utils.media_group import MediaGroupBuilder
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.keyboards import search as kb
+from bot.db.orm import add_favourite_item
+from bot.keyboards import search_kbs as kb
+from bot.keyboards.search_kbs import get_search_keyboard
 from bot.states import SearchStates
 from services.gpt import ChatGPT
 from wb.api import WildBerriesAPI
-
+from wb.data import Product
 
 router = Router()
 
 
-@router.message(F.text == "/search")
-async def start_search(message: Message, state: FSMContext):
+@router.callback_query(F.data == "start_search_clothes")
+async def start_search(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await state.set_state(SearchStates.prompt)
-    await message.answer(
+    await callback.message.answer(
         'Введи запрос для поиска, например: "Подбери образ из белой футбокли и кед"'
     )
+    await callback.answer()
 
 
 # TODO: добавить фильтр цены и оригинальности товара
@@ -43,9 +51,11 @@ async def search_prompt(message: Message, state: FSMContext):
 async def paginate_search(message: Message, state: FSMContext):
     current_index = (await state.get_data()).get("current_index")
     combinations = (await state.get_data()).get("combinations")
-    products = [product for product in combinations[current_index]]
+    products = [Product(**product) for product in combinations[current_index]]
+    summary_price = sum([product.price for product in products])
     media_group = MediaGroupBuilder(
         caption=f"\n".join([product.name for product in products])
+        + f"\n\n<b>Общая цена: {summary_price}₽</b>"
     )
     for product in products:
         media_group.add(type="photo", media=URLInputFile(product.image_url))
@@ -54,8 +64,29 @@ async def paginate_search(message: Message, state: FSMContext):
 
 
 @router.message(F.text == "👎", SearchStates.searching)
+@router.message(F.text == "🔍Продолжить поиск", SearchStates.searching)
 async def next_paginate(message: Message, state: FSMContext):
+    if message.text == "🔍Продолжить поиск":
+        await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
     await state.update_data(
         {"current_index": (await state.get_data()).get("current_index", 0) + 1}
     )
     await paginate_search(message, state)
+
+
+@router.message(F.text == "👍", SearchStates.searching)
+async def next_paginate(message: Message, state: FSMContext, session: AsyncSession):
+    current_index = (await state.get_data()).get("current_index")
+    combinations = (await state.get_data()).get("combinations")
+    products = [Product(**product) for product in combinations[current_index]]
+    for product in products:
+        await add_favourite_item(session, tg_id=message.chat.id, product=product)
+
+    answer = "Артикулы:\n" + f"\n".join(
+        [
+            f"<a href='https://www.wildberries.ru/catalog/{product.id}/detail.aspx'>{product.name}</a>: "
+            f"<code>{product.id}</code>"
+            for product in products
+        ]
+    )
+    await message.answer(answer, reply_markup=get_search_keyboard())
