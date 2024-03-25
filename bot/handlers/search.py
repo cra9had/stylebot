@@ -23,10 +23,12 @@ router = Router()
 
 @router.callback_query(F.data == "start_search_clothes")
 async def start_search(callback: CallbackQuery, state: FSMContext):
+    await callback.message.delete()
     await state.set_state(SearchStates.prompt)
     await callback.message.answer(
         'Введи запрос для поиска, например: "Подбери образ из белой футбокли и кед"'
     )
+    await callback.answer()
 
 
 # TODO: добавить фильтр цены и оригинальности товара
@@ -78,7 +80,7 @@ async def next_paginate(message: Message, state: FSMContext, session: AsyncSessi
     combinations = (await state.get_data()).get("combinations")
     products = [Product(**product) for product in combinations[current_index]]
     for product in products:
-        await add_favourite_item(session, message.chat.id, product.id)
+        await add_favourite_item(session, tg_id=message.chat.id, product=product)
 
     answer = "Артикулы:\n" + f"\n".join(
         [

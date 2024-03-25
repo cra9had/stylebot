@@ -43,7 +43,8 @@ def make_favourite_kb(favourites: list[Favourite], page: int, max_page: int):
 
     for favourite in favourites:
         builder.button(
-            text=f'{favourite.wb_item_id}', callback_data=FavouriteItemsFactory(wb_item_id=favourite.wb_item_id)
+            text=f'{favourite.item_name} - {favourite.item_price} ₽',
+            callback_data=FavouriteItemsFactory(wb_item_id=favourite.wb_item_id)
         )
 
     builder.adjust(1)
@@ -65,5 +66,15 @@ def make_favourite_kb(favourites: list[Favourite], page: int, max_page: int):
     paginate_builder.adjust(3)
 
     builder.attach(paginate_builder)
+
+    go_back_button_builder = InlineKeyboardBuilder()
+
+    go_back_button_builder.button(
+        text='Вернуться в меню', callback_data='go_back_profile_menu'
+    )
+
+    go_back_button_builder.adjust(1)
+
+    builder.attach(go_back_button_builder)
 
     return builder.as_markup()

@@ -51,9 +51,12 @@ class Geo(Base):
 
 class Favourite(Base):
     __tablename__ = 'user_favourites'
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    wb_item_id: Mapped[int] = mapped_column(primary_key=True)
+    item_name: Mapped[str] = mapped_column(nullable=False)
+    photo_link: Mapped[str] = mapped_column(nullable=False)
+    item_price: Mapped[int] = mapped_column(nullable=False)
     tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"))
-    wb_item_id: Mapped[int]
 
     user: Mapped["User"] = relationship(back_populates="favourites")
 

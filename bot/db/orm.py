@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from bot.db.constants import FAVOURITES_IN_PAGE
 from bot.db.models import User, Body, Geo, Favourite
+from wb.data import Product
 
 
 async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence[User] | User | None:
@@ -143,16 +144,22 @@ async def get_user_profile_data(session: AsyncSession, tg_id: int):
         return None
 
 
-async def get_favourites(session: AsyncSession, tg_id: int):
-    user_query = await session.execute(
-        select(User).filter_by(tg_id=tg_id).options(
-            selectinload(User.favourites))
-    )
+async def get_favourites(session: AsyncSession, tg_id: int | None = None, wb_item_id: int | None = None):
+    if tg_id:
+        user_query = await session.execute(
+            select(User).filter_by(tg_id=tg_id).options(
+                selectinload(User.favourites))
+        )
 
-    user = user_query.scalar_one_or_none()
-
-    if user:
+        user = user_query.scalar_one_or_none()
         return user.favourites
+
+    elif wb_item_id:
+        favourite_request = await session.execute(
+            select(Favourite).where(Favourite.wb_item_id == wb_item_id).options(selectinload(Favourite.user))
+        )
+
+        return favourite_request.scalar_one_or_none()
 
 
 async def get_page_favourites(session: AsyncSession, tg_id: int, page: int):
@@ -170,9 +177,11 @@ async def get_max_page(session: AsyncSession, tg_id: int):
     return max_page
 
 
-async def add_favourite_item(session: AsyncSession, tg_id: int, wb_item_id: int) -> None:
+async def add_favourite_item(session: AsyncSession,
+                             tg_id: int,
+                             product: Product) -> None:
     try:
-        favourite_query = await session.execute(select(Favourite).filter(Favourite.wb_item_id == wb_item_id))
+        favourite_query = await session.execute(select(Favourite).filter(Favourite.wb_item_id == product.id))
         favourite = favourite_query.scalar_one_or_none()
 
         if not favourite:
@@ -182,7 +191,16 @@ async def add_favourite_item(session: AsyncSession, tg_id: int, wb_item_id: int)
             if not user:
                 raise RuntimeError(f"в add_favourite_item не был найден User с tg_id={tg_id}")
 
-            favourite = Favourite(tg_id=tg_id, wb_item_id=wb_item_id)
+            wb_item_id = product.id
+            item_name = product.name
+            photo_link = product.image_url
+            item_price = product.price
+
+            favourite = Favourite(tg_id=tg_id,
+                                  wb_item_id=wb_item_id,
+                                  item_name=item_name,
+                                  photo_link=photo_link,
+                                  item_price=item_price)
             favourite.user = user
             session.add(favourite)
             await session.commit()
