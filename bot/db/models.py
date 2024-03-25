@@ -20,6 +20,8 @@ class User(Base):
     body: Mapped["Body"] = relationship(back_populates="user")
     geo: Mapped["Geo"] = relationship(back_populates="user")
     favourites: Mapped[List["Favourite"]] = relationship(back_populates="user")
+    settings: Mapped[List["SearchSettings"]] = relationship(back_populates="user")
+
     def __repr__(self):
         return f"{self.tg_id=} {self.tgname=}"
 
@@ -64,6 +66,21 @@ class Favourite(Base):
         return f'{self.tg_id=} {self.wb_item_id=}'
 
 
+class SearchSettings(Base):
+    __tablename__ = 'search_settings'
+
+    tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"), primary_key=True)
+    min_price: Mapped[Optional[int]]
+    max_price: Mapped[Optional[int]]
+
+    user: Mapped[List["User"]] = relationship(back_populates="settings")
+
+    def __repr__(self):
+        return f'{self.min_price=} {self.max_price=}'
+
+    def get_prices(self):
+        return self.min_price, self.max_price
+
 
 DATABASE_URL = getenv("DB_URL")
 engine = create_async_engine(DATABASE_URL, echo=True)
@@ -77,7 +94,7 @@ async def get_session() -> AsyncSession:
 
 async def init_models():
     async with engine.begin() as conn:
-        #await conn.run_sync(Base.metadata.drop_all)
+        # await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
 

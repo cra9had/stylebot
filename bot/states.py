@@ -16,3 +16,9 @@ class ProfileParameters(StatesGroup):
 
 class ProfileMenuStates(StatesGroup):
     main_menu = State()
+
+
+class AdjustSettings(StatesGroup):
+
+    adjust_min_price = State()
+    adjust_max_price = State()

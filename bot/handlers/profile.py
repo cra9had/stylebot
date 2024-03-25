@@ -96,6 +96,6 @@ async def get_favourite_item(callback: CallbackQuery, session: AsyncSession, cal
                                         )
 
 
-@r.callback_query(F.data.in_(['ignore_pagination']))
+@r.callback_query(F.data.in_(['ignore_pagination', 'ignore_callback']))
 async def ignore_callback(callback: CallbackQuery):
     await callback.answer()

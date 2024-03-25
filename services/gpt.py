@@ -26,7 +26,7 @@ class ChatGPT:
         return chat_completion.choices[0].message.content
 
     async def get_search_queries(
-        self, user_prompt: str, user_sex: Literal["мужчина", "женщина"]
+        self, user_prompt: str, user_sex: Literal["female", "male"]
     ) -> list[str]:
         prompt = self._get_prompt_template().format(user_prompt=user_prompt)
         prompts = []
