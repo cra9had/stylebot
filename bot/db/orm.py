@@ -19,12 +19,12 @@ async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence
 
     if not tg_id:
         users_request = await session.execute(
-            select(User)
+            select(User).options(selectinload(User.body), selectinload(User.geo))
         )
         return users_request.scalars().all()
     else:
         users_request = await session.execute(
-            select(User).where(User.tg_id == tg_id)
+            select(User).where(User.tg_id == tg_id).options(selectinload(User.body), selectinload(User.geo))
         )
         return users_request.scalar()
 
@@ -44,10 +44,18 @@ async def add_user(session: AsyncSession, tg_id: int, tgname: str = None):
         print(f"Error adding user: {e}")
 
 
-async def get_bodies(session: AsyncSession):
-    request = await session.execute(select(Body))
+async def get_bodies(session: AsyncSession, tg_id: int | None):
+    if not tg_id:
+        bodies_request = await session.execute(
+            select(Body).options(selectinload(Body.user))
+        )
+        return bodies_request.scalars().all()
+    else:
+        bodies_request = await session.execute(
+            select(Body).where(Body.tg_id == tg_id).options(selectinload(Body.user))
+        )
 
-    return request.scalars().all()
+        return bodies_request.scalar()
 
 
 async def get_locations(session: AsyncSession):
@@ -74,6 +82,10 @@ async def add_body(session: AsyncSession, tg_id: int, sex: str, age: int, size: 
             await session.commit()
         else:
             print("Body's already there")
+            body.sex = sex
+            body.age = age
+            body.size = size
+            await session.commit()
 
     except Exception as e:
         print(f"Error adding body: {e}")
@@ -97,7 +109,35 @@ async def add_geo(session: AsyncSession, tg_id: int, dest_id: int):
             session.add(geo)
             await session.commit()
         else:
-            print("Body's already there")
+            print("Geo's already there")
+            location.wb_city_id = dest_id
+            await session.commit()
 
     except Exception as e:
         print(f"Error adding body: {e}")
+
+
+async def get_user_profile_data(session, user_tg):
+    user_query = await session.execute(
+        select(User).filter_by(tg_id=user_tg).options(
+            selectinload(User.body),
+            selectinload(User.geo)
+        )
+    )
+
+    user = user_query.scalar_one_or_none()
+
+    if user:
+        return {
+            'user_tg': user.tg_id,
+            'body': {
+                'sex': user.body.sex,
+                'age': user.body.age,
+                'size': user.body.size
+            },
+            'geo': {
+                'wb_city_id': user.geo.wb_city_id
+            }
+        }
+    else:
+        return None

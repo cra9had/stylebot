@@ -16,3 +16,17 @@ def make_profile_kb():
     builder.adjust(2)
 
     return builder.as_markup()
+
+
+def make_profile_body_kb():
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text='Изменить параметры профиля', callback_data='re_enter_body_parameters'
+    )
+    builder.button(
+        text='Вернуться назад', callback_data="go_back_profile_menu"
+    )
+
+    builder.adjust(2)
+
+    return builder.as_markup()

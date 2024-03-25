@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from bot.db.models import User
 from bot.keyboards.body_kbs import make_sizes_kb, make_sex_kb, make_params_sum_kb, make_city_choice_kb
+from bot.keyboards.profile_kbs import make_profile_kb
 from bot.states import ProfileParameters
 from bot.cbdata import SizeChartFactory, SexPickFactory, ParamsConfirmFactory
 from bot.db.orm import add_body, get_users, get_bodies, add_geo, get_locations
@@ -113,7 +114,7 @@ async def confirm_body(callback: CallbackQuery, session: AsyncSession, callback_
     await add_body(session=session, tg_id=callback.message.chat.id, sex=sex, age=age, size=size)
     await add_geo(session=session, tg_id=callback.message.chat.id, dest_id=callback_data.dest_id)
     await callback.message.delete()
-    await callback.message.answer(f"Параметры добавлены.", reply_markup=None)
+    await callback.message.answer(f"Параметры добавлены.", reply_markup=make_profile_kb())
 
 
 # TODO: Remove
@@ -122,7 +123,5 @@ async def check_body(message: Message, session: AsyncSession):
     # Debug information
 
     user: User = await get_users(session, message.chat.id)
-    bodies = await get_bodies(session)
-    geos = await get_locations(session)
 
     await message.answer(f'{user}, {user.geo}')

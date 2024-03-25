@@ -9,7 +9,8 @@ from aiogram.types import Message
 from aiogram.types import URLInputFile
 from aiogram.utils.media_group import MediaGroupBuilder
 
-from bot.keyboards import search as kb
+from bot.keyboards import search_kbs as kb
+from bot.keyboards.search_kbs import get_search_keyboard
 from bot.states import SearchStates
 from services.gpt import ChatGPT
 from wb.api import WildBerriesAPI
@@ -18,10 +19,10 @@ from wb.data import Product
 router = Router()
 
 
-@router.message(F.text == "/search")
-async def start_search(message: Message, state: FSMContext):
+@router.callback_query(F.data == "start_search_clothes")
+async def start_search(callback: CallbackQuery, state: FSMContext):
     await state.set_state(SearchStates.prompt)
-    await message.answer(
+    await callback.message.answer(
         'Введи запрос для поиска, например: "Подбери образ из белой футбокли и кед"'
     )
 
@@ -81,4 +82,4 @@ async def next_paginate(message: Message, state: FSMContext):
             for product in products
         ]
     )
-    await message.answer(answer, reply_markup=kb.get_continue_keyboard())
+    await message.answer(answer, reply_markup=get_search_keyboard())
