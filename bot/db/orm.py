@@ -1,3 +1,4 @@
+from math import ceil
 from typing import List, Sequence
 
 import sqlalchemy.exc
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import MissingGreenlet
 from sqlalchemy.orm import selectinload
 
+from bot.db.constants import FAVOURITES_IN_PAGE
 from bot.db.models import User, Body, Geo, Favourite
 
 
@@ -151,6 +153,21 @@ async def get_favourites(session: AsyncSession, tg_id: int):
 
     if user:
         return user.favourites
+
+
+async def get_page_favourites(session: AsyncSession, tg_id: int, page: int):
+    favourites = await get_favourites(session, tg_id)
+    page_favourites = favourites[page - 1: page * FAVOURITES_IN_PAGE] \
+        if page * FAVOURITES_IN_PAGE < len(favourites) else favourites[page - 1:]
+
+    return page_favourites
+
+
+async def get_max_page(session: AsyncSession, tg_id: int):
+    favourites = await get_favourites(session, tg_id)
+    max_page = ceil(len(favourites) / FAVOURITES_IN_PAGE) or 1
+
+    return max_page
 
 
 async def add_favourite_item(session: AsyncSession, tg_id: int, wb_item_id: int) -> None:

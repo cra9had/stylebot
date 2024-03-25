@@ -53,14 +53,14 @@ def make_favourite_kb(favourites: list[Favourite], page: int, max_page: int):
     if page == 1:
         paginate_builder.button(text=" ", callback_data="ignore_pagination")
     else:
-        paginate_builder.button(text="<-", callback_data=PageNumFactory(page_num=page))
+        paginate_builder.button(text="<-", callback_data=PageNumFactory(page_num=page - 1))
 
     paginate_builder.button(text=f"{page}/{max_page}", callback_data="ignore_pagination")
 
     if page == max_page:
         paginate_builder.button(text=" ", callback_data="ignore_pagination")
     else:
-        paginate_builder.button(text="->", callback_data=PageNumFactory(page_num=page))
+        paginate_builder.button(text="->", callback_data=PageNumFactory(page_num=page + 1))
 
     paginate_builder.adjust(3)
 
