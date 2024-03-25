@@ -164,8 +164,8 @@ async def get_favourites(session: AsyncSession, tg_id: int | None = None, wb_ite
 
 async def get_page_favourites(session: AsyncSession, tg_id: int, page: int):
     favourites = await get_favourites(session, tg_id)
-    page_favourites = favourites[page - 1: page * FAVOURITES_IN_PAGE] \
-        if page * FAVOURITES_IN_PAGE < len(favourites) else favourites[page - 1:]
+    page_favourites = favourites[(page - 1) * FAVOURITES_IN_PAGE: page * FAVOURITES_IN_PAGE] \
+        if page * FAVOURITES_IN_PAGE < len(favourites) else favourites[(page - 1) * FAVOURITES_IN_PAGE:]
 
     return page_favourites
 

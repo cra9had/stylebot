@@ -20,6 +20,8 @@ r = Router()
 async def get_profile(callback: CallbackQuery, session: AsyncSession, bot: Bot):
     await remove_reply_keyboard(bot, callback.message.chat.id)
 
+    await callback.message.delete()
+
     user_body: Body = await get_bodies(session, callback.message.chat.id)
 
     msg_text = \
