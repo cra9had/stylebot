@@ -41,7 +41,7 @@ async def search_prompt(message: Message, state: FSMContext):
     )  # TODO: подставить из бд пол
     print(queries)
     wb = WildBerriesAPI()
-    combinations = wb.get_combinations(*[await wb.search(query) for query in queries])
+    combinations = wb.get_combinations(*[await wb.search(query) for query in queries], min_price=1000, max_price=1500)
     await state.set_data({"combinations": combinations, "current_index": 0})
     await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
     await state.set_state(SearchStates.searching)

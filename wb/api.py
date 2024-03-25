@@ -62,7 +62,7 @@ class WildBerriesAPI:
         return products
 
     @staticmethod
-    def get_combinations(*products: list[Product]) -> list[tuple[dict]]:
+    def get_combinations(*products: list[Product], min_price: int | None = None, max_price: int | None = None) -> list[tuple[dict]]:
         """
         Возращает комбинации одежды. В *products перечисляем list[Product]
         :keyword max_repeats - Максимальное кол-во комбинаций с одним элементомЯ
@@ -76,7 +76,13 @@ class WildBerriesAPI:
             )
         )
         random.shuffle(combined)
-        return combined
+        filtered_combinations = []
+        for combination in combined:
+            total_price = sum(product['price'] for product in combination)
+            if min_price <= total_price <= max_price:
+                filtered_combinations.append(combination)
+
+        return filtered_combinations
 
     async def get_dist_id(self, coords: Coordinates) -> int:
         """
