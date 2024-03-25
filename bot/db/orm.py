@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import MissingGreenlet
 from sqlalchemy.orm import selectinload
 
-from bot.db.models import User, Body, Geo
+from bot.db.models import User, Body, Geo, Favourite
 
 
 async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence[User] | User | None:
@@ -71,7 +71,6 @@ async def add_body(session: AsyncSession, tg_id: int, sex: str, age: int, size: 
         if not body:
             user_query = await session.execute(select(User).filter(User.tg_id == tg_id))
             user = user_query.scalar_one_or_none()
-            print("USER IN ADD_BODY:", user)
 
             if not user:
                 raise RuntimeError(f"в add_body не был найден User с tg_id={tg_id}")
@@ -91,7 +90,7 @@ async def add_body(session: AsyncSession, tg_id: int, sex: str, age: int, size: 
         print(f"Error adding body: {e}")
 
 
-async def add_geo(session: AsyncSession, tg_id: int, dest_id: int):
+async def add_geo(session: AsyncSession, tg_id: int, dest_id: int) -> None:
     try:
         location_query = await session.execute(select(Geo).filter(Geo.tg_id == tg_id))
         location = location_query.scalar_one_or_none()
@@ -99,7 +98,6 @@ async def add_geo(session: AsyncSession, tg_id: int, dest_id: int):
         if not location:
             user_query = await session.execute(select(User).filter(User.tg_id == tg_id))
             user = user_query.scalar_one_or_none()
-            print("USER IN ADD_GEO:", user)
 
             if not user:
                 raise RuntimeError(f"в add_location не был найден User с tg_id={tg_id}")
@@ -114,12 +112,12 @@ async def add_geo(session: AsyncSession, tg_id: int, dest_id: int):
             await session.commit()
 
     except Exception as e:
-        print(f"Error adding body: {e}")
+        print(f"Error adding geo: {e}")
 
 
-async def get_user_profile_data(session, user_tg):
+async def get_user_profile_data(session: AsyncSession, tg_id: int):
     user_query = await session.execute(
-        select(User).filter_by(tg_id=user_tg).options(
+        select(User).filter_by(tg_id=tg_id).options(
             selectinload(User.body),
             selectinload(User.geo)
         )
@@ -141,3 +139,39 @@ async def get_user_profile_data(session, user_tg):
         }
     else:
         return None
+
+
+async def get_favourites(session: AsyncSession, tg_id: int):
+    user_query = await session.execute(
+        select(User).filter_by(tg_id=tg_id).options(
+            selectinload(User.favourites))
+    )
+
+    user = user_query.scalar_one_or_none()
+
+    if user:
+        return user.favourites
+
+
+async def add_favourite_item(session: AsyncSession, tg_id: int, wb_item_id: int) -> None:
+    try:
+        favourite_query = await session.execute(select(Favourite).filter(Favourite.wb_item_id == wb_item_id))
+        favourite = favourite_query.scalar_one_or_none()
+
+        if not favourite:
+            user_query = await session.execute(select(User).filter(User.tg_id == tg_id))
+            user = user_query.scalar_one_or_none()
+
+            if not user:
+                raise RuntimeError(f"в add_favourite_item не был найден User с tg_id={tg_id}")
+
+            favourite = Favourite(tg_id=tg_id, wb_item_id=wb_item_id)
+            favourite.user = user
+            session.add(favourite)
+            await session.commit()
+        else:
+            print("Favourite's already there")
+            await session.commit()
+
+    except Exception as e:
+        print(f"Error adding favourite item: {e}")

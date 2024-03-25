@@ -8,7 +8,9 @@ from aiogram.types import CallbackQuery
 from aiogram.types import Message
 from aiogram.types import URLInputFile
 from aiogram.utils.media_group import MediaGroupBuilder
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from bot.db.orm import add_favourite_item
 from bot.keyboards import search_kbs as kb
 from bot.keyboards.search_kbs import get_search_keyboard
 from bot.states import SearchStates
@@ -71,10 +73,13 @@ async def next_paginate(message: Message, state: FSMContext):
 
 
 @router.message(F.text == "👍", SearchStates.searching)
-async def next_paginate(message: Message, state: FSMContext):
+async def next_paginate(message: Message, state: FSMContext, session: AsyncSession):
     current_index = (await state.get_data()).get("current_index")
     combinations = (await state.get_data()).get("combinations")
     products = [Product(**product) for product in combinations[current_index]]
+    for product in products:
+        await add_favourite_item(session, message.chat.id, product.id)
+
     answer = "Артикулы:\n" + f"\n".join(
         [
             f"<a href='https://www.wildberries.ru/catalog/{product.id}/detail.aspx'>{product.name}</a>: "

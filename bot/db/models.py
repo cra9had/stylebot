@@ -1,6 +1,6 @@
 import asyncio
 from os import getenv
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import ForeignKey, String, BigInteger, select
 from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.orm import mapped_column, declarative_base
@@ -19,7 +19,7 @@ class User(Base):
 
     body: Mapped["Body"] = relationship(back_populates="user")
     geo: Mapped["Geo"] = relationship(back_populates="user")
-
+    favourites: Mapped[List["Favourite"]] = relationship(back_populates="user")
     def __repr__(self):
         return f"{self.tg_id=} {self.tgname=}"
 
@@ -49,6 +49,19 @@ class Geo(Base):
         return f'{self.tg_id=} {self.wb_city_id=}'
 
 
+class Favourite(Base):
+    __tablename__ = 'user_favourites'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.tg_id"))
+    wb_item_id: Mapped[int]
+
+    user: Mapped["User"] = relationship(back_populates="favourites")
+
+    def __repr__(self):
+        return f'{self.tg_id=} {self.wb_item_id=}'
+
+
+
 DATABASE_URL = getenv("DB_URL")
 engine = create_async_engine(DATABASE_URL, echo=True)
 async_pool = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -61,7 +74,7 @@ async def get_session() -> AsyncSession:
 
 async def init_models():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        #await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
 
