@@ -1,5 +1,6 @@
 import dataclasses
 import json
+import logging
 
 from aiogram import F
 from aiogram import Router
@@ -11,6 +12,7 @@ from aiogram.utils.media_group import MediaGroupBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.orm import add_favourite_item
+from bot.db.orm import get_users
 from bot.keyboards import search_kbs as kb
 from bot.keyboards.search_kbs import get_search_keyboard
 from bot.states import SearchStates
@@ -33,13 +35,13 @@ async def start_search(callback: CallbackQuery, state: FSMContext):
 
 # TODO: добавить фильтр цены и оригинальности товара
 @router.message(SearchStates.prompt)
-async def search_prompt(message: Message, state: FSMContext):
+async def search_prompt(message: Message, state: FSMContext, session: AsyncSession):
     prompt = message.text
     gpt = ChatGPT()
-    queries = await gpt.get_search_queries(
-        prompt, "мужчина"
-    )  # TODO: подставить из бд пол
-    print(queries)
+    user = await get_users(session=session, tg_id=message.chat.id)
+    await message.answer("Жду ответа от WildBerrries👀")
+    queries = await gpt.get_search_queries(prompt, user.body.sex)
+    logging.debug(f"{queries=}")
     wb = WildBerriesAPI()
     combinations = wb.get_combinations(*[await wb.search(query) for query in queries])
     await state.set_data({"combinations": combinations, "current_index": 0})
