@@ -41,7 +41,6 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
     user = await get_users(session=session, tg_id=message.chat.id)
     await message.answer("Жду ответа от WildBerrries👀")
     queries = await gpt.get_search_queries(prompt, user.body.sex)
-    logging.debug(f"{queries=}")
     wb = WildBerriesAPI()
     combinations = wb.get_combinations(*[await wb.search(query) for query in queries])
     await state.set_data({"combinations": combinations, "current_index": 0})
@@ -65,13 +64,26 @@ async def paginate_search(message: Message, state: FSMContext):
     await message.answer_media_group(media=media_group.build())
 
 
-@router.message(F.text == "👎", SearchStates.searching)
-@router.message(F.text == "🔍Продолжить поиск", SearchStates.searching)
+@router.message(F.text.in_(["🔍Продолжить поиск", "Следующая комбинация"]), SearchStates.searching)
 async def next_paginate(message: Message, state: FSMContext):
     if message.text == "🔍Продолжить поиск":
         await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
     await state.update_data(
         {"current_index": (await state.get_data()).get("current_index", 0) + 1}
+    )
+    await paginate_search(message, state)
+
+
+@router.message(F.text.in_(["Предыдущая комбинация"]), SearchStates.searching)
+async def prev_paginate(message: Message, state: FSMContext):
+    if message.text == "🔍Продолжить поиск":
+        await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
+
+    if (await state.get_data()).get("current_index", 0) == 0:
+        return
+
+    await state.update_data(
+        {"current_index": (await state.get_data()).get("current_index", 0) - 1}
     )
     await paginate_search(message, state)
 
