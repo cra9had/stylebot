@@ -15,15 +15,11 @@ from aiogram.types import URLInputFile, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.media_group import MediaGroupBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.db.constants import DEFAULT_MAX_PRICE
-from bot.db.constants import DEFAULT_MIN_PRICE
-from bot.db.models import Body
 from bot.db.models import SearchSettings
 from bot.db.orm import add_favourite_item, add_settings, get_bodies, get_settings, get_users
 from bot.keyboards import search_kbs as kb
-from bot.keyboards.search_kbs import get_price_kb, get_product_keyboard, get_search_keyboard
-from bot.states import AdjustSettings
-from bot.states import SearchStates
+from bot.keyboards.search_kbs import get_product_keyboard, get_search_keyboard, return_to_menu_kb, start_search_kb
+from bot.states import SearchStates, AdjustSettings
 from services.gpt import ChatGPT, BadClothesException
 from wb.api import WildBerriesAPI
 from wb.data import Product
@@ -31,18 +27,62 @@ from wb.data import Product
 router = Router()
 
 
-@router.callback_query(F.data.in_(["start_search_clothes", "restart_search_clothes"]))
+@router.callback_query(F.data.in_(["go_search_menu"]))
 async def start_search(
         callback: CallbackQuery, state: FSMContext, session: AsyncSession
 ):
     await callback.message.delete()
-    await state.set_state(SearchStates.prompt)
-    settings = await get_settings(session, callback.message.chat.id)
+    await state.set_state(AdjustSettings.adjust_min_price)
     await callback.message.answer(
-        'Введи запрос для поиска, например: <b>"Подбери образ из белой футболки и кед"</b>\n\nА ниже ты можешь отфильтровать цены образов, которые я буду выдавать.',
-        reply_markup=get_price_kb(settings.min_price, settings.max_price),
+        "Введи минимальную цену за весь образ (в рублях)"
     )
+
     await callback.answer()
+
+
+@router.callback_query(F.data.in_(["start_search_clothes", "restart_search_clothes"]))
+async def start_search(
+        callback: CallbackQuery, state: FSMContext
+):
+    await callback.message.delete()
+    await state.set_state(SearchStates.prompt)
+    await callback.message.answer(
+         'Введи запрос для поиска, например: <b>"Подбери образ из белой футболки и кед"</b>',
+         reply_markup=None,
+     )
+    await callback.answer()
+
+
+@router.message(AdjustSettings.adjust_min_price)
+async def get_min_price(message: Message, state: FSMContext):
+    try:
+        min_price = int(message.text)
+        await state.update_data(min_price=min_price)
+        await message.answer("Отлично. Теперь введи максимальную.")
+        await state.set_state(AdjustSettings.adjust_max_price)
+    except ValueError:
+        await message.answer("Неправильно введённая цена. Введи ещё раз.")
+        return
+
+
+@router.message(AdjustSettings.adjust_max_price)
+async def get_max_price(message: Message, state: FSMContext, session: AsyncSession):
+    try:
+        max_price = int(message.text)
+        await state.update_data(max_price=max_price)
+        min_price = (await state.get_data()).get('min_price', 0)
+        if min_price > max_price:
+            await message.answer("Максимальная цена должна быть больше, чем минимальная. Начнём ещё раз?", reply_markup=return_to_menu_kb())
+            await message.answer("Если хочешь попробовать снова, введи минимальную цену за весь образ (в рублях)")
+            await state.set_state(AdjustSettings.adjust_min_price)
+        await message.answer("Настройки поиска сохранены.", reply_markup=start_search_kb())
+        await add_settings(session=session, tg_id=message.chat.id, min_price=min_price, max_price=max_price)
+        await state.set_state(AdjustSettings.adjust_max_price)
+    except ValueError:
+        await message.answer("Неправильно введённая цена. Введи ещё раз.")
+        return
+
+
 
 
 @router.message(SearchStates.prompt)
@@ -143,113 +183,4 @@ async def next_paginate(message: Message, state: FSMContext, session: AsyncSessi
     await message.answer(answer, reply_markup=get_product_keyboard())
 
 
-@router.callback_query(F.data == "change_min_price")
-async def change_min_price(callback: CallbackQuery, state: FSMContext):
-    await callback.message.delete()
-    await state.set_state(AdjustSettings.adjust_min_price)
-    del_msg = await callback.message.answer(
-        "Введите значение минимальной цены (в рублях) для следующих образов одежды:"
-    )
-    await state.update_data(del_msg=del_msg.message_id)
-    await callback.answer()
 
-
-@router.callback_query(F.data == "change_max_price")
-async def change_max_price(callback: CallbackQuery, state: FSMContext):
-    await callback.message.delete()
-    await state.set_state(AdjustSettings.adjust_max_price)
-    del_msg = await callback.message.answer(
-        "Введите значение максимальной цены (в рублях) для следующих образов одежды:"
-    )
-    await state.update_data(del_msg=del_msg.message_id)
-    await callback.answer()
-
-
-@router.message(AdjustSettings.adjust_min_price)
-async def set_min_price(message: Message, state: FSMContext, session: AsyncSession):
-    new_min_price = message.text
-    data = await state.get_data()
-    del_msg_id = data["del_msg"]
-
-    settings = await get_settings(session, message.chat.id)
-    try:
-        if settings.max_price > int(new_min_price):
-            await message.bot.delete_message(message.chat.id, del_msg_id)
-            await add_settings(session, message.chat.id, min_price=new_min_price)
-
-            to_delete = await message.answer("Новое значение записано.")
-            await asyncio.sleep(1)
-            await to_delete.delete()
-            await message.answer(
-                "Теперь вы можете вернуться к поиску",
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text="Вернуться к поиску",
-                                callback_data="restart_search_clothes",
-                            )
-                        ]
-                    ]
-                ),
-            )
-    except ValueError:
-        return
-
-
-@router.message(AdjustSettings.adjust_max_price)
-async def set_max_price(message: Message, state: FSMContext, session: AsyncSession):
-    new_max_price = message.text
-    data = await state.get_data()
-    del_msg_id = data["del_msg"]
-
-    settings = await get_settings(session, message.chat.id)
-    try:
-        if settings.min_price < int(new_max_price):
-            await message.bot.delete_message(message.chat.id, del_msg_id)
-            await add_settings(session, message.chat.id, max_price=new_max_price)
-
-            to_delete = await message.answer("Новое значение записано.")
-            await asyncio.sleep(1)
-            await to_delete.delete()
-            await message.answer(
-                "Теперь вы можете вернуться к поиску",
-                reply_markup=InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text="Вернуться к поиску",
-                                callback_data="restart_search_clothes",
-                            )
-                        ]
-                    ]
-                ),
-            )
-    except ValueError:
-        return
-
-
-@router.callback_query(F.data == "reset_price")
-async def reset_price(callback: CallbackQuery, session: AsyncSession):
-    await add_settings(
-        session,
-        callback.message.chat.id,
-        min_price=DEFAULT_MIN_PRICE,
-        max_price=DEFAULT_MAX_PRICE,
-    )
-
-    await callback.message.delete()
-    await callback.message.answer(
-        "Настройки цен сброшены.",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="Вернуться к поиску",
-                        callback_data="restart_search_clothes",
-                    )
-                ]
-            ]
-        ),
-    )
-    await callback.answer()

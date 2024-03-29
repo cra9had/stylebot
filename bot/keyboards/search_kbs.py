@@ -33,20 +33,18 @@ def get_product_keyboard() -> ReplyKeyboardMarkup:
     return builder.as_markup(resize_keyboard=True)
 
 
-def get_price_kb(min_price: int | None = None, max_price: int | None = None):
+def return_to_menu_kb():
     builder = InlineKeyboardBuilder()
-    builder.button(text="Минимальная цена", callback_data="ignore_callback")
-    builder.button(text="Максимальная цена", callback_data="ignore_callback")
+    builder.button(
+        text="Вернуться в меню", callback_data='go_back_profile_menu'
+    )
+    return builder.as_markup()
 
-    builder.button(text=f"{min_price} ₽", callback_data="change_min_price")
 
-    if max_price != DEFAULT_MAX_PRICE:
-        builder.button(text=f"{max_price} ₽", callback_data="change_max_price")
-    else:
-        builder.button(text=f"∞", callback_data="change_max_price")
-
-    builder.button(text="Сбросить цены", callback_data="reset_price")
-
-    builder.adjust(2, 2, 1)
+def start_search_kb():
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text='🔍Поиск', callback_data='start_search_clothes'
+    )
 
     return builder.as_markup()
