@@ -11,7 +11,10 @@ def get_search_keyboard() -> ReplyKeyboardMarkup:
         text="👍",
     )
     builder.button(
-        text="👎",
+        text="Предыдущая комбинация",
+    )
+    builder.button(
+        text="Следующая комбинация",
     )
 
     builder.adjust(2)

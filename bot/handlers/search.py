@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery
 from aiogram.types import InlineKeyboardButton
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.types import Message
-from aiogram.types import URLInputFile
+from aiogram.types import URLInputFile, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.media_group import MediaGroupBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +24,7 @@ from bot.keyboards import search_kbs as kb
 from bot.keyboards.search_kbs import get_price_kb, get_product_keyboard, get_search_keyboard
 from bot.states import AdjustSettings
 from bot.states import SearchStates
-from services.gpt import ChatGPT
+from services.gpt import ChatGPT, BadClothesException
 from wb.api import WildBerriesAPI
 from wb.data import Product
 
@@ -33,7 +33,7 @@ router = Router()
 
 @router.callback_query(F.data.in_(["start_search_clothes", "restart_search_clothes"]))
 async def start_search(
-    callback: CallbackQuery, state: FSMContext, session: AsyncSession
+        callback: CallbackQuery, state: FSMContext, session: AsyncSession
 ):
     await callback.message.delete()
     await state.set_state(SearchStates.prompt)
@@ -51,15 +51,23 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
 
     prompt = message.text
     gpt = ChatGPT()
-    queries = await gpt.get_search_queries(prompt, f"{body.get_sex_for_prompt()}")
-    print(f"{queries=}")
+    temp_msg = await message.answer("Жду ответа от WildBerrries👀")
+
+    try:
+        queries = await gpt.get_search_queries(prompt, body.sex)
+        print(f"{queries=}")
+
+    except BadClothesException as e:
+        await message.answer("Введите запрос, начинающийся с <b>\"Подбери мне образ\"</b> и содержащий в себе одежду.")
+        return
+
+    if not queries:
+        await message.answer(
+            "Наш бот не совсем понял, что тебе нужно. Начни свой запрос с <b>\"Подбери мне образ\"</b> и содержащий в себе одежду. ")
+        return
+
 
     settings: SearchSettings = await get_settings(session, message.chat.id)
-
-    user = await get_users(session=session, tg_id=message.chat.id)
-    temp_msg = await message.answer("Жду ответа от WildBerrries👀")
-    
-    queries = await gpt.get_search_queries(prompt, user.body.sex)
 
     wb = WildBerriesAPI()
     combinations = wb.get_combinations(
@@ -69,6 +77,7 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
     )
     await state.set_data({"combinations": combinations, "current_index": 0})
     await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
+    await temp_msg.delete()
     await state.set_state(SearchStates.searching)
     await paginate_search(message, state)
 
@@ -76,25 +85,42 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
 async def paginate_search(message: Message, state: FSMContext):
     current_index = (await state.get_data()).get("current_index")
     combinations = (await state.get_data()).get("combinations")
-    products = [Product(**product) for product in combinations[current_index]]
-    summary_price = sum([product.price for product in products])
-    media_group = MediaGroupBuilder(
-        caption=f"\n".join([product.name for product in products])
-        + f"\n\n<b>Общая цена: {summary_price}₽</b>"
-    )
-    for product in products:
-        media_group.add(type="photo", media=URLInputFile(product.image_url))
+    try:
+        products = [Product(**product) for product in combinations[current_index]]
+        summary_price = sum([product.price for product in products])
+        media_group = MediaGroupBuilder(
+            caption=f"\n".join([product.name for product in products])
+                    + f"\n\n<b>Общая цена: {summary_price}₽</b>"
+        )
+        for product in products:
+            media_group.add(type="photo", media=URLInputFile(product.image_url))
+        await message.answer_media_group(media=media_group.build())
 
-    await message.answer_media_group(media=media_group.build())
+    except IndexError:
+        await message.answer("Комбинаций больше нет.",
+                             reply_markup=ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text='Вернуться в меню')]], resize_keyboard=True))
 
 
-@router.message(F.text == "👎", SearchStates.searching)
-@router.message(F.text == "🔍Продолжить поиск", SearchStates.searching)
+@router.message(F.text.in_(["🔍Продолжить поиск", "Следующая комбинация"]), SearchStates.searching)
 async def next_paginate(message: Message, state: FSMContext):
     if message.text == "🔍Продолжить поиск":
         await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
     await state.update_data(
         {"current_index": (await state.get_data()).get("current_index", 0) + 1}
+    )
+    await paginate_search(message, state)
+
+
+@router.message(F.text.in_(["Предыдущая комбинация"]), SearchStates.searching)
+async def prev_paginate(message: Message, state: FSMContext):
+    if message.text == "🔍Продолжить поиск":
+        await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
+
+    if (await state.get_data()).get("current_index", 0) == 0:
+        return
+
+    await state.update_data(
+        {"current_index": (await state.get_data()).get("current_index", 0) - 1}
     )
     await paginate_search(message, state)
 

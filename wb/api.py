@@ -68,7 +68,7 @@ class WildBerriesAPI:
     ) -> list[tuple[dict]]:
         """
         Возращает комбинации одежды. В *products перечисляем list[Product]
-        :keyword max_repeats - Максимальное кол-во комбинаций с одним элементомЯ
+        :keyword max_repeats - Максимальное кол-во комбинаций с одним элементом
         """
         combined = list(
             zip(

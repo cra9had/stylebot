@@ -22,7 +22,7 @@ from bot.db.orm import get_page_favourites
 from bot.keyboards.profile_kbs import make_favourite_kb
 from bot.keyboards.profile_kbs import make_profile_body_kb
 from bot.keyboards.profile_kbs import make_profile_kb
-from bot.states import ProfileMenuStates
+from bot.states import ProfileMenuStates, SearchStates
 from bot.utils.remove_reply import remove_reply_keyboard
 
 r = Router()
@@ -37,11 +37,11 @@ async def get_profile(callback: CallbackQuery, session: AsyncSession, bot: Bot):
     user_body: Body = await get_bodies(session, callback.message.chat.id)
 
     msg_text = f"""
-Ваши параметры:
-Пол: {user_body.sex}
-Возраст: {user_body.age}
-Размер одежды: {user_body.size}
-"""
+                Ваши параметры:
+                Пол: {user_body.sex}
+                Возраст: {user_body.age}
+                Размер одежды: {user_body.size}
+                """
 
     await callback.message.answer(msg_text, reply_markup=make_profile_body_kb())
 
@@ -56,11 +56,19 @@ async def go_main_menu(callback: CallbackQuery):
     await callback.message.answer(text=message_text, reply_markup=make_profile_kb())
 
 
+@r.message(F.text == 'Вернуться в меню', SearchStates.searching)
+async def go_main_menu(message: Message, state: FSMContext):
+    await state.clear()
+    await remove_reply_keyboard(message.bot, message.chat.id)
+
+    message_text = f"☰ Меню бота подбора одежды с Wildberries 🍇\n"
+    await message.answer(text=message_text, reply_markup=make_profile_kb())
+
+
 @r.callback_query(F.data == "go_favourite_menu")
 async def go_main_menu(
-    callback: CallbackQuery, session: AsyncSession, state: FSMContext
+        callback: CallbackQuery, session: AsyncSession, state: FSMContext
 ):
-
     await callback.message.delete()
 
     data = await state.get_data()
@@ -85,10 +93,10 @@ async def go_main_menu(
 
 @r.callback_query(PageNumFactory.filter())
 async def go_next_page(
-    callback: CallbackQuery,
-    session: AsyncSession,
-    state: FSMContext,
-    callback_data: PageNumFactory,
+        callback: CallbackQuery,
+        session: AsyncSession,
+        state: FSMContext,
+        callback_data: PageNumFactory,
 ):
     data = await state.get_data()
     max_page = data["max_page"]
@@ -108,7 +116,7 @@ async def go_next_page(
 
 @r.callback_query(FavouriteItemsFactory.filter())
 async def get_favourite_item(
-    callback: CallbackQuery, session: AsyncSession, callback_data: FavouriteItemsFactory
+        callback: CallbackQuery, session: AsyncSession, callback_data: FavouriteItemsFactory
 ):
     await callback.message.delete()
 
