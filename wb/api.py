@@ -128,6 +128,8 @@ class WildBerriesAPI:
         }
         if page != 1:
             params["page"] = page
+        if filters.is_original:
+            params["foriginal"] = filters.is_original
         url = "https://search.wb.ru/exactmatch/ru/common/v5/search"
         response = await self._request(
             url=url, request_method="get", params=params, headers=headers
