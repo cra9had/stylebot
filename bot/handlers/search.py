@@ -1,4 +1,6 @@
 import asyncio
+import dataclasses
+import json
 import logging
 
 from aiogram import F
@@ -17,15 +19,9 @@ from bot.db.constants import DEFAULT_MAX_PRICE
 from bot.db.constants import DEFAULT_MIN_PRICE
 from bot.db.models import Body
 from bot.db.models import SearchSettings
-from bot.db.orm import add_favourite_item
-from bot.db.orm import add_settings
-from bot.db.orm import get_bodies
-from bot.db.orm import get_settings
-from bot.db.orm import get_users
+from bot.db.orm import add_favourite_item, add_settings, get_bodies, get_settings, get_users
 from bot.keyboards import search_kbs as kb
-from bot.keyboards.search_kbs import get_price_kb
-from bot.keyboards.search_kbs import get_product_keyboard
-from bot.keyboards.search_kbs import get_search_keyboard
+from bot.keyboards.search_kbs import get_price_kb, get_product_keyboard, get_search_keyboard
 from bot.states import AdjustSettings
 from bot.states import SearchStates
 from services.gpt import ChatGPT
@@ -59,6 +55,11 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
     print(f"{queries=}")
 
     settings: SearchSettings = await get_settings(session, message.chat.id)
+
+    user = await get_users(session=session, tg_id=message.chat.id)
+    temp_msg = await message.answer("Жду ответа от WildBerrries👀")
+    
+    queries = await gpt.get_search_queries(prompt, user.body.sex)
 
     wb = WildBerriesAPI()
     combinations = wb.get_combinations(
