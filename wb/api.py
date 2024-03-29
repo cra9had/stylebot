@@ -44,7 +44,7 @@ class WildBerriesAPI:
             raise WildBerriesApiError("WildBerries API didn't return products")
 
         products = []
-        logger.debug(products_json)
+       # logger.debug(products_json)
         for product in data:
             try:
                 products.append(

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from typing import Literal, List, Dict
 from services.constants import Constants, ENTER_PROMPT_TEMPLATE, GOOD_ANSWER_PROMPT_TEMPLATE, \
@@ -32,31 +33,29 @@ class ChatGPT:
         )
         return chat_completion.choices[0].message.content
 
-
     async def get_search_queries(
             self, user_prompt: str, user_sex: Literal["мужчина", "женщина"]
     ) -> list[str] | None:
+
         prompt = Constants.PROMPT_TEMPLATES.get(ENTER_PROMPT_TEMPLATE).format(user_prompt=user_prompt)
-
         answer = await self._chat(prompt)
-
-        print(answer)
 
         if answer in Constants.INVALID_ANSWERS:
             return
 
-        after_answer_prompt = Constants.PROMPT_TEMPLATES.get(GOOD_ANSWER_PROMPT_TEMPLATE).format(gpt_answer=answer)
+        after_answer_prompt = Constants.PROMPT_TEMPLATES.get(GOOD_ANSWER_PROMPT_TEMPLATE).format(chat_answer=answer)
+        final_answer = (await self._chat(after_answer_prompt))
+        result = json.loads(final_answer)
 
-        final_answer = (await self._chat(after_answer_prompt)).split('\n')
+        user_sex_text = 'мужская' if user_sex == 'male' else 'женская'
 
-        print(final_answer)
-
-    # return prompts
-
-
-async def test():
-    chat = ChatGPT()
-    await chat.get_search_queries("Подбери мне образ из красной рубашки в стиле урбан", user_sex='мужчина')
+        clothes = [position + f' {user_sex_text}' for position in result.get('clothes')]
+        return clothes
 
 
-asyncio.run(test())
+# async def main():
+#     chat = ChatGPT()
+#     await chat.get_search_queries("Подбери образ из пальто, футболки и кед в стиле кэжуал", user_sex='мужчина')
+#
+#
+# asyncio.run(main())
