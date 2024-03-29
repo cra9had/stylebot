@@ -1,4 +1,5 @@
 venv
+db_data
 .idea
 .env
 **/*/__pycache__

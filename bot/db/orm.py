@@ -8,7 +8,7 @@ from sqlalchemy.exc import MissingGreenlet
 from sqlalchemy.orm import selectinload
 
 from bot.db.constants import FAVOURITES_IN_PAGE
-from bot.db.models import User, Body, Geo, Favourite
+from bot.db.models import User, Body, Geo, Favourite, SearchSettings
 from wb.data import Product
 
 
@@ -22,12 +22,14 @@ async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence
 
     if not tg_id:
         users_request = await session.execute(
-            select(User).options(selectinload(User.body), selectinload(User.geo))
+            select(User).options(selectinload(User.body), selectinload(User.geo), selectinload(User.favourites),
+                                 selectinload(User.settings))
         )
         return users_request.scalars().all()
     else:
         users_request = await session.execute(
-            select(User).where(User.tg_id == tg_id).options(selectinload(User.body), selectinload(User.geo))
+            select(User).where(User.tg_id == tg_id).options(selectinload(User.body), selectinload(User.geo),
+                                                            selectinload(User.favourites), selectinload(User.settings))
         )
         return users_request.scalar()
 
@@ -210,3 +212,54 @@ async def add_favourite_item(session: AsyncSession,
 
     except Exception as e:
         print(f"Error adding favourite item: {e}")
+
+
+async def get_settings(session: AsyncSession, tg_id: int | None = None) \
+        -> Sequence[SearchSettings] | SearchSettings | None:
+    if not tg_id:
+        settings_request = await session.execute(
+            select(SearchSettings).options(selectinload(SearchSettings.user))
+        )
+        return settings_request.scalars().all()
+    else:
+        settings_request = await session.execute(
+            select(SearchSettings).where(SearchSettings.tg_id == tg_id).options(selectinload(SearchSettings.user))
+        )
+        return settings_request.scalar()
+
+
+async def add_settings(session: AsyncSession, tg_id: int, min_price: int | None = None,
+                       max_price: int | None = None) -> None:
+    try:
+        settings_query = await session.execute(select(SearchSettings).filter(SearchSettings.tg_id == tg_id))
+        settings = settings_query.scalar_one_or_none()
+
+        if not settings:
+            user_query = await session.execute(select(User).filter(User.tg_id == tg_id))
+            user = user_query.scalar_one_or_none()
+
+            if not user:
+                raise RuntimeError(f"в add_settings не был найден User с tg_id={tg_id}")
+
+            if min_price is not None and max_price is not None:
+                settings = SearchSettings(tg_id=tg_id, min_price=min_price, max_price=max_price)
+            elif min_price is None:
+                settings = SearchSettings(tg_id=tg_id, max_price=max_price)
+            elif max_price is None:
+                settings = SearchSettings(tg_id=tg_id, min_price=min_price)
+            else:
+                settings = SearchSettings(tg_id=tg_id)
+
+            settings.user = user
+            session.add(settings)
+            await session.commit()
+        else:
+            print("Settings're already there")
+            if min_price is not None:
+                settings.min_price = min_price
+            if max_price is not None:
+                settings.max_price = max_price
+            await session.commit()
+
+    except Exception as e:
+        print(f"Error adding geo: {e}")

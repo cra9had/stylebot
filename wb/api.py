@@ -44,14 +44,13 @@ class WildBerriesAPI:
             raise WildBerriesApiError("WildBerries API didn't return products")
 
         products = []
-        logger.debug(products_json)
         for product in data:
             try:
                 products.append(
                     Product(
                         id=product.get("id"),
                         price=product.get("sizes")[0].get("price").get("total")
-                              // 100,  # TODO: unsafe, maybe refactor?!
+                        // 100,  # TODO: unsafe, maybe refactor?!
                         name=product.get("name"),
                         image_url=image_url(product.get("id"), "BIG"),
                     )
@@ -62,7 +61,11 @@ class WildBerriesAPI:
         return products
 
     @staticmethod
-    def get_combinations(*products: list[Product]) -> list[tuple[dict]]:
+    def get_combinations(
+        *products: list[Product],
+        min_price: int | None = None,
+        max_price: int | None = None,
+    ) -> list[tuple[dict]]:
         """
         Возращает комбинации одежды. В *products перечисляем list[Product]
         :keyword max_repeats - Максимальное кол-во комбинаций с одним элементомЯ
@@ -76,7 +79,13 @@ class WildBerriesAPI:
             )
         )
         random.shuffle(combined)
-        return combined
+        filtered_combinations = []
+        for combination in combined:
+            total_price = sum(product["price"] for product in combination)
+            if min_price <= total_price <= max_price:
+                filtered_combinations.append(combination)
+
+        return filtered_combinations
 
     async def get_dist_id(self, coords: Coordinates) -> int:
         """
@@ -100,7 +109,7 @@ class WildBerriesAPI:
             return -1257786  # MOSCOW
 
     async def search(
-            self, query: str, page: int = 1, filters: Optional[Filters] = None
+        self, query: str, page: int = 1, filters: Optional[Filters] = None
     ) -> list[Product]:
         headers = {"x-queryid": get_query_id_for_search()}
         if not filters:
@@ -138,13 +147,13 @@ class WildBerriesAPI:
         return self._session
 
     async def _request(
-            self,
-            url: str,
-            request_method: Literal["get", "post"] = "get",
-            params: Optional[dict] = None,
-            data: Optional[dict] = None,
-            retries: int = DEFAULT_RETRIES_NUM,
-            **kwargs,
+        self,
+        url: str,
+        request_method: Literal["get", "post"] = "get",
+        params: Optional[dict] = None,
+        data: Optional[dict] = None,
+        retries: int = DEFAULT_RETRIES_NUM,
+        **kwargs,
     ) -> Any:
         await self._get_session()
         if request_method == "post":
