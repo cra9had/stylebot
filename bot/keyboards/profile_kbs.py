@@ -1,5 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from bot.db.constants import DEFAULT_MAX_PRICE
 from bot.db.models import Favourite
 from bot.cbdata import FavouriteItemsFactory, PageNumFactory
 
@@ -7,7 +8,7 @@ from bot.cbdata import FavouriteItemsFactory, PageNumFactory
 def make_profile_kb():
     builder = InlineKeyboardBuilder()
     builder.button(
-        text='🎯Подобрать образ', callback_data="start_search_clothes"
+        text='🎯Подобрать образ', callback_data="go_search_menu"
     )
     builder.button(
         text='⭐Избранное', callback_data='go_favourite_menu'
@@ -76,5 +77,24 @@ def make_favourite_kb(favourites: list[Favourite], page: int, max_page: int):
     go_back_button_builder.adjust(1)
 
     builder.attach(go_back_button_builder)
+
+    return builder.as_markup()
+
+
+def get_price_kb(min_price: int | None = None, max_price: int | None = None):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Минимальная цена", callback_data="ignore_callback")
+    builder.button(text="Максимальная цена", callback_data="ignore_callback")
+
+    builder.button(text=f"{min_price} ₽", callback_data="change_min_price")
+
+    if max_price != DEFAULT_MAX_PRICE:
+        builder.button(text=f"{max_price} ₽", callback_data="change_max_price")
+    else:
+        builder.button(text=f"∞", callback_data="change_max_price")
+
+    builder.button(text="Сбросить цены", callback_data="reset_price")
+
+    builder.adjust(2, 2, 1)
 
     return builder.as_markup()
