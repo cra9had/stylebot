@@ -2,6 +2,7 @@ import unittest
 
 from wb.api import WildBerriesAPI
 from wb.data import Coordinates
+from wb.data import Filters
 from wb.data import Product
 from wb.utils import image_url
 
@@ -11,7 +12,8 @@ class TestWildBerriesAPI(unittest.IsolatedAsyncioTestCase):
         self.api = WildBerriesAPI()
 
     async def test_search(self):
-        search = await self.api.search(query="джинсы чёрные бананы")
+        filters = Filters(is_original=1)
+        search = await self.api.search(query="джинсы чёрные бананы", filters=filters)
         print(search)
         self.assertNotEqual(search, [])
         await self.api.close()

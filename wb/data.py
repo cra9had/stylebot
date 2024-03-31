@@ -1,10 +1,12 @@
 from dataclasses import asdict
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
 class Filters:
-    dest: float = -1257786  # MOSCOW\
+    is_original: Optional[int] = None  # 1 - ORIGINAL
+    dest: float = -1257786  # MOSCOW
 
 
 @dataclass
