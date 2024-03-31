@@ -8,15 +8,18 @@ from bot.db.constants import DEFAULT_MAX_PRICE
 def get_search_keyboard() -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     builder.button(
-        text="👍",
+        text="<",
     )
     builder.button(
-        text="Предыдущая комбинация",
+        text=">",
     )
     builder.button(
-        text="Следующая комбинация",
+        text="Показать артикулы",
     )
-
+    builder.button(
+        text="Закрепить элемент",
+    )
+    builder.button(text="Вернуться в меню")
     builder.adjust(2)
 
     return builder.as_markup(resize_keyboard=True)
