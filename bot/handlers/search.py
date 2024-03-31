@@ -10,17 +10,24 @@ from aiogram.methods.answer_callback_query import AnswerCallbackQuery
 from aiogram.types import CallbackQuery
 from aiogram.types import InlineKeyboardButton
 from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import KeyboardButton
 from aiogram.types import Message
-from aiogram.types import URLInputFile, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup
+from aiogram.types import URLInputFile
 from aiogram.utils.media_group import MediaGroupBuilder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.models import SearchSettings
-from bot.db.orm import add_favourite_item, add_settings, get_bodies, get_settings, get_users
+from bot.db.orm import add_favourite_item
+from bot.db.orm import add_settings
+from bot.db.orm import get_bodies
+from bot.db.orm import get_settings
+from bot.db.orm import get_users
 from bot.keyboards import search_kbs as kb
 from bot.keyboards.search_kbs import get_product_keyboard, get_search_keyboard, return_to_menu_kb, start_search_kb
 from bot.states import SearchStates, AdjustSettings
 from services.gpt import ChatGPT, BadClothesException
+
 from wb.api import WildBerriesAPI
 from wb.data import Product
 
@@ -29,7 +36,7 @@ router = Router()
 
 @router.callback_query(F.data.in_(["go_search_menu"]))
 async def start_search(
-        callback: CallbackQuery, state: FSMContext, session: AsyncSession
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession
 ):
     await callback.message.delete()
     await state.set_state(AdjustSettings.adjust_min_price)
@@ -98,14 +105,16 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
         print(f"{queries=}")
 
     except BadClothesException as e:
-        await message.answer("Введите запрос, начинающийся с <b>\"Подбери мне образ\"</b> и содержащий в себе одежду.")
+        await message.answer(
+            'Введите запрос, начинающийся с <b>"Подбери мне образ"</b> и содержащий в себе одежду.'
+        )
         return
 
     if not queries:
         await message.answer(
-            "Наш бот не совсем понял, что тебе нужно. Начни свой запрос с <b>\"Подбери мне образ\"</b> и содержащий в себе одежду. ")
+            'Наш бот не совсем понял, что тебе нужно. Начни свой запрос с <b>"Подбери мне образ"</b> и содержащий в себе одежду. '
+        )
         return
-
 
     settings: SearchSettings = await get_settings(session, message.chat.id)
 
@@ -130,18 +139,25 @@ async def paginate_search(message: Message, state: FSMContext):
         summary_price = sum([product.price for product in products])
         media_group = MediaGroupBuilder(
             caption=f"\n".join([product.name for product in products])
-                    + f"\n\n<b>Общая цена: {summary_price}₽</b>"
+            + f"\n\n<b>Общая цена: {summary_price}₽</b>"
         )
         for product in products:
             media_group.add(type="photo", media=URLInputFile(product.image_url))
         await message.answer_media_group(media=media_group.build())
 
     except IndexError:
-        await message.answer("Комбинаций больше нет.",
-                             reply_markup=ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text='Вернуться в меню')]], resize_keyboard=True))
+        await message.answer(
+            "Комбинаций больше нет.",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="Вернуться в меню")]],
+                resize_keyboard=True,
+            ),
+        )
 
 
-@router.message(F.text.in_(["🔍Продолжить поиск", "Следующая комбинация"]), SearchStates.searching)
+@router.message(
+    F.text.in_(["🔍Продолжить поиск", "Следующая комбинация"]), SearchStates.searching
+)
 async def next_paginate(message: Message, state: FSMContext):
     if message.text == "🔍Продолжить поиск":
         await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
