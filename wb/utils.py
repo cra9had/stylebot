@@ -1,33 +1,35 @@
-import time
 import random
-from typing import Literal
+import time
 from datetime import datetime
+from typing import Literal
 
 
 IMAGES = {
-  "TINY": "https://basket-{0}.wbbasket.ru/vol{1}/part{2}/{3}/images/tm/{4}.jpg",
-  "BIG": "https://basket-{0}.wbbasket.ru/vol{1}/part{2}/{3}/images/big/{4}.jpg",
-  "SMALL": "https://basket-{0}.wbbasket.ru/vol{1}/part{2}/{3}/images/c246x328/{4}.jpg",
-  "MEDIUM":"https://basket-{0}.wbbasket.ru/vol{1}/part{2}/{3}/images/c516x688/{4}.jpg",
+    "TINY": "https://basket-{0}.wbbasket.ru/vol{1}/part{2}/{3}/images/tm/{4}.jpg",
+    "BIG": "https://basket-{0}.wbbasket.ru/vol{1}/part{2}/{3}/images/big/{4}.jpg",
+    "SMALL": "https://basket-{0}.wbbasket.ru/vol{1}/part{2}/{3}/images/c246x328/{4}.jpg",
+    "MEDIUM": "https://basket-{0}.wbbasket.ru/vol{1}/part{2}/{3}/images/c516x688/{4}.jpg",
 }
 IMAGES_SIZES = Literal["SMALL", "TINY", "BIG", "MEDIUM"]
 
 
 BASKETS = [
-  [0, 143],
-  [144, 287],
-  [288, 431],
-  [432, 719],
-  [720, 1007],
-  [1008, 1061],
-  [1062, 1115],
-  [1116, 1169],
-  [1170, 1313],
-  [1314, 1601],
-  [1602, 1655],
-  [1656, 1919],
-  [1920, 2045],
-  [2046, 2189]
+    [0, 143],
+    [144, 287],
+    [288, 431],
+    [432, 719],
+    [720, 1007],
+    [1008, 1061],
+    [1062, 1115],
+    [1116, 1169],
+    [1170, 1313],
+    [1314, 1601],
+    [1602, 1655],
+    [1656, 1919],
+    [1920, 2045],
+    [2046, 2189],
+    [2190, 2333],
+    [2334, 2477],
 ]
 
 

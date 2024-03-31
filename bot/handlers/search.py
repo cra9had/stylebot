@@ -39,6 +39,15 @@ from wb.data import Product
 router = Router()
 
 
+@dataclasses.dataclass
+class PinnedProduct:
+    product: Product
+    index: int
+
+    def to_json(self):
+        return dataclasses.asdict(self)
+
+
 @router.callback_query(F.data.in_(["go_search_menu"]))
 async def start_search(
     callback: CallbackQuery, state: FSMContext, session: AsyncSession
@@ -144,9 +153,22 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
     await paginate_search(message, state)
 
 
-async def _pin_product_by_id(state: FSMContext, product_id: int) -> None:
+async def _get_current_products(state: FSMContext) -> List[Product]:
+    combination = await _get_products(state)
+    pinned = await _get_pinned_products(state)
+    for product in pinned:
+        combination[product.index] = Product(**product.product)
+    print(combination)
+    return combination
+
+
+async def _pin_product_by_id(state: FSMContext, product_id: int, index: int) -> None:
     products = await _get_products(state)
-    product = [product for product in products if product.id == product_id][0]
+    product = [
+        PinnedProduct(product=product, index=index)
+        for product in products
+        if product.id == product_id
+    ][0]
     await state.update_data(
         pinned_products=[
             *(await state.get_data()).get("pinned_products"),
@@ -159,19 +181,21 @@ async def _unpin_product_by_id(state: FSMContext, product_id: int) -> None:
     products = (await state.get_data()).get("pinned_products")
     await state.update_data(
         pinned_products=[
-            product for product in products if product.get("id") != product_id
+            product
+            for product in products
+            if product.get("product").get("id") != product_id
         ]
     )
 
 
 async def _get_pinned_products(state: FSMContext):
     products = (await state.get_data()).get("pinned_products")
-    return [Product(**product) for product in products]
+    return [PinnedProduct(**product) for product in products]
 
 
 async def _get_pinned_products_id(state: FSMContext) -> List[int]:
     products = (await state.get_data()).get("pinned_products")
-    return [product.get("id") for product in products]
+    return [product.get("product").get("id") for product in products]
 
 
 async def _get_products(state: FSMContext) -> List[Product]:
@@ -182,9 +206,7 @@ async def _get_products(state: FSMContext) -> List[Product]:
 
 async def paginate_search(message: Message, state: FSMContext):
     try:
-        products = await _get_products(state)
-        pinned_products = await _get_pinned_products(state)
-        products = [*pinned_products, *products[len(pinned_products) :]]
+        products = await _get_current_products(state)
         summary_price = sum([product.price for product in products])
         media_group = MediaGroupBuilder(
             caption=f"\n".join([product.name for product in products])
@@ -237,12 +259,11 @@ async def prev_paginate(message: Message, state: FSMContext):
 
 @router.message(F.text == "Закрепить элемент")
 async def pin_element(message: Message, state: FSMContext):
-    pinned_products = await _get_pinned_products(state)
-    products = await _get_products(state)
-    products = [*pinned_products, *products[len(pinned_products) :]]
+    products = await _get_current_products(state)
     text = "Выбери элементы одежды которые нужно закрепить:\n"
     for i, product in enumerate(products):
         text += f"{i+1}. {product.name}\n"
+    print(f"{products=}")
     await message.answer(
         text,
         reply_markup=kb.get_pin_keyboard(
@@ -253,12 +274,18 @@ async def pin_element(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith("pin-product/"))
 async def element_pin_switcher(call: CallbackQuery, state: FSMContext):
-    products = await _get_pinned_products_id(state)
+    all_products = await _get_current_products(state)
+    products_id = await _get_pinned_products_id(state)
     product_id = int(call.data.replace("pin-product/", ""))
-    if product_id in products:
+    print(products_id, product_id)
+    if product_id in products_id:
         await _unpin_product_by_id(state, product_id)
     else:
-        await _pin_product_by_id(state, product_id)
+        await _pin_product_by_id(
+            state,
+            product_id,
+            [product.id for product in all_products].index(product_id),
+        )
     await call.message.delete()
     await pin_element(call.message, state)
 
@@ -267,9 +294,7 @@ async def element_pin_switcher(call: CallbackQuery, state: FSMContext):
 async def show_products_id_handler(
     message: Message, state: FSMContext, session: AsyncSession
 ):
-    current_index = (await state.get_data()).get("current_index")
-    combinations = (await state.get_data()).get("combinations")
-    products = [Product(**product) for product in combinations[current_index]]
+    products = await _get_current_products(state)
     for product in products:
         await add_favourite_item(session, tg_id=message.chat.id, product=product)
 
