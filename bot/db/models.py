@@ -98,6 +98,7 @@ class SearchSettings(Base):
     )
     min_price: Mapped[Optional[int]]
     max_price: Mapped[Optional[int]]
+    is_original: Mapped[Optional[int]]
 
     user: Mapped[List["User"]] = relationship(back_populates="settings")
 

@@ -34,7 +34,7 @@ from bot.states import SearchStates
 from services.gpt import BadClothesException
 from services.gpt import ChatGPT
 from wb.api import WildBerriesAPI
-from wb.data import Product
+from wb.data import Product, Filters
 
 router = Router()
 
@@ -50,7 +50,7 @@ class PinnedProduct:
 
 @router.callback_query(F.data.in_(["go_search_menu"]))
 async def start_search(
-    callback: CallbackQuery, state: FSMContext, session: AsyncSession
+        callback: CallbackQuery, state: FSMContext, session: AsyncSession
 ):
     await callback.message.delete()
     await state.set_state(AdjustSettings.adjust_min_price)
@@ -86,7 +86,6 @@ async def get_min_price(message: Message, state: FSMContext):
 async def get_max_price(message: Message, state: FSMContext, session: AsyncSession):
     try:
         max_price = int(message.text)
-        await state.update_data(max_price=max_price)
         min_price = (await state.get_data()).get("min_price", 0)
         if min_price > max_price:
             await message.answer(
@@ -96,20 +95,43 @@ async def get_max_price(message: Message, state: FSMContext, session: AsyncSessi
             await message.answer(
                 "Если хочешь попробовать снова, введи минимальную цену за весь образ (в рублях)"
             )
+            await state.clear()
             await state.set_state(AdjustSettings.adjust_min_price)
-        await message.answer(
-            "Настройки поиска сохранены.", reply_markup=start_search_kb()
-        )
-        await add_settings(
-            session=session,
-            tg_id=message.chat.id,
-            min_price=min_price,
-            max_price=max_price,
-        )
-        await state.set_state(AdjustSettings.adjust_max_price)
+
+        await state.update_data(max_price=max_price)
+        await state.set_state(AdjustSettings.adjust_is_original)
+        await message.answer("Формируем комбинации только из оригинальных вещей?",
+                             reply_markup=InlineKeyboardMarkup(
+                                 inline_keyboard=[[
+                                     InlineKeyboardButton(text='Да ✅', callback_data='original_yes'),
+                                     InlineKeyboardButton(text='Нет ❌', callback_data='original_no')
+                                 ]]
+                             ))
     except ValueError:
         await message.answer("Неправильно введённая цена. Введи ещё раз.")
         return
+
+
+@router.callback_query(F.data.startswith('original_'), AdjustSettings.adjust_is_original)
+async def change_is_original(callback: CallbackQuery, session: AsyncSession, state: FSMContext):
+    data = await state.get_data()
+
+    await callback.message.delete()
+
+    await callback.message.answer(
+        "Настройки поиска сохранены.", reply_markup=start_search_kb()
+    )
+
+    await add_settings(
+         session=session,
+         tg_id=callback.message.chat.id,
+         min_price=data['min_price'],
+         max_price=data['max_price'],
+         is_original=1 if callback.data == 'original_yes' else 0
+    )
+
+    await state.clear()
+    await callback.answer()
 
 
 @router.message(SearchStates.prompt)
@@ -137,10 +159,9 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
         return
 
     settings: SearchSettings = await get_settings(session, message.chat.id)
-
     wb = WildBerriesAPI()
     combinations = wb.get_combinations(
-        *[await wb.search(query) for query in queries],
+        *[await wb.search(query, filters=Filters(is_original=settings.is_original)) for query in queries],
         min_price=settings.min_price,
         max_price=settings.max_price,
     )
@@ -210,7 +231,7 @@ async def paginate_search(message: Message, state: FSMContext):
         summary_price = sum([product.price for product in products])
         media_group = MediaGroupBuilder(
             caption=f"\n".join([product.name for product in products])
-            + f"\n\n<b>Общая цена: {summary_price}₽</b>"
+                    + f"\n\n<b>Общая цена: {summary_price}₽</b>"
         )
 
         for product in products:
@@ -262,7 +283,7 @@ async def pin_element(message: Message, state: FSMContext):
     products = await _get_current_products(state)
     text = "Выбери элементы одежды которые нужно закрепить:\n"
     for i, product in enumerate(products):
-        text += f"{i+1}. {product.name}\n"
+        text += f"{i + 1}. {product.name}\n"
     print(f"{products=}")
     await message.answer(
         text,
@@ -292,7 +313,7 @@ async def element_pin_switcher(call: CallbackQuery, state: FSMContext):
 
 @router.message(F.text == "Показать артикулы", SearchStates.searching)
 async def show_products_id_handler(
-    message: Message, state: FSMContext, session: AsyncSession
+        message: Message, state: FSMContext, session: AsyncSession
 ):
     products = await _get_current_products(state)
     for product in products:

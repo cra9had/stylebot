@@ -229,7 +229,7 @@ async def get_settings(session: AsyncSession, tg_id: int | None = None) \
 
 
 async def add_settings(session: AsyncSession, tg_id: int, min_price: int | None = None,
-                       max_price: int | None = None) -> None:
+                       max_price: int | None = None, is_original: int = 0) -> None:
     try:
         settings_query = await session.execute(select(SearchSettings).filter(SearchSettings.tg_id == tg_id))
         settings = settings_query.scalar_one_or_none()
@@ -242,13 +242,13 @@ async def add_settings(session: AsyncSession, tg_id: int, min_price: int | None 
                 raise RuntimeError(f"в add_settings не был найден User с tg_id={tg_id}")
 
             if min_price is not None and max_price is not None:
-                settings = SearchSettings(tg_id=tg_id, min_price=min_price, max_price=max_price)
+                settings = SearchSettings(tg_id=tg_id, min_price=min_price, max_price=max_price, is_original=is_original)
             elif min_price is None:
-                settings = SearchSettings(tg_id=tg_id, max_price=max_price)
+                settings = SearchSettings(tg_id=tg_id, max_price=max_price, is_original=is_original)
             elif max_price is None:
-                settings = SearchSettings(tg_id=tg_id, min_price=min_price)
+                settings = SearchSettings(tg_id=tg_id, min_price=min_price, is_original=is_original)
             else:
-                settings = SearchSettings(tg_id=tg_id)
+                settings = SearchSettings(tg_id=tg_id, is_original=is_original)
 
             settings.user = user
             session.add(settings)
@@ -259,6 +259,7 @@ async def add_settings(session: AsyncSession, tg_id: int, min_price: int | None 
                 settings.min_price = min_price
             if max_price is not None:
                 settings.max_price = max_price
+            settings.is_original = is_original
             await session.commit()
 
     except Exception as e:
