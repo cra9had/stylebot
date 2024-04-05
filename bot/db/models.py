@@ -124,7 +124,7 @@ class Transaction(Base):
 
 class Subscription(Base):
     __tablename__ = 'subscriptions'
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     transaction_id: Mapped[int] = mapped_column(ForeignKey('transactions.id'))
     user_id: Mapped[int] = mapped_column(ForeignKey('users.tg_id'))
 

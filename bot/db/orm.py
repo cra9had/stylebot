@@ -1,3 +1,4 @@
+from datetime import datetime
 from math import ceil
 from typing import List, Sequence
 
@@ -8,7 +9,7 @@ from sqlalchemy.exc import MissingGreenlet
 from sqlalchemy.orm import selectinload
 
 from bot.db.constants import FAVOURITES_IN_PAGE
-from bot.db.models import User, Body, Geo, Favourite, SearchSettings
+from bot.db.models import User, Body, Geo, Favourite, SearchSettings, Transaction, Subscription
 from wb.data import Product
 
 
@@ -23,13 +24,14 @@ async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence
     if not tg_id:
         users_request = await session.execute(
             select(User).options(selectinload(User.body), selectinload(User.geo), selectinload(User.favourites),
-                                 selectinload(User.settings))
+                                 selectinload(User.settings), selectinload(User.subscription))
         )
         return users_request.scalars().all()
     else:
         users_request = await session.execute(
             select(User).where(User.tg_id == tg_id).options(selectinload(User.body), selectinload(User.geo),
-                                                            selectinload(User.favourites), selectinload(User.settings))
+                                                            selectinload(User.favourites), selectinload(User.settings),
+                                                            selectinload(User.subscription))
         )
         return users_request.scalar()
 
@@ -242,7 +244,8 @@ async def add_settings(session: AsyncSession, tg_id: int, min_price: int | None 
                 raise RuntimeError(f"в add_settings не был найден User с tg_id={tg_id}")
 
             if min_price is not None and max_price is not None:
-                settings = SearchSettings(tg_id=tg_id, min_price=min_price, max_price=max_price, is_original=is_original)
+                settings = SearchSettings(tg_id=tg_id, min_price=min_price, max_price=max_price,
+                                          is_original=is_original)
             elif min_price is None:
                 settings = SearchSettings(tg_id=tg_id, max_price=max_price, is_original=is_original)
             elif max_price is None:
@@ -264,3 +267,51 @@ async def add_settings(session: AsyncSession, tg_id: int, min_price: int | None 
 
     except Exception as e:
         print(f"Error adding geo: {e}")
+
+
+# create_transaction, confirm_transaction(trx_id), create_subscription
+
+async def create_transaction(session: AsyncSession, tg_id: int, transaction_type: str):
+    try:
+        transaction = Transaction(tg_id=tg_id,
+                                  date_creation=int(datetime.now().timestamp()),
+                                  transaction_type=transaction_type)
+
+        session.add(transaction)
+    except Exception as e:
+        print(f"Error creating transaction: {e}")
+
+
+async def get_transaction(session: AsyncSession, trx_id: int):
+    trans_query = await session.execute(
+        select(Transaction).filter(Transaction.id == trx_id).options(selectinload(Transaction.subscription))
+    )
+
+    return trans_query.scalar_one_or_none()
+
+
+async def confirm_transaction(session: AsyncSession, trx_id: int, payment_date: int | datetime | None):
+    trans = await get_transaction(session, trx_id)
+
+    if payment_date and isinstance(payment_date, datetime):
+        payment_date = int(payment_date.timestamp())
+
+    if not payment_date:
+        payment_date = int(datetime.now().timestamp())
+
+    trans.date_payment = payment_date
+
+    await session.commit()
+
+
+async def create_subscription(session: AsyncSession, trx_id: int, user_id: int):
+
+    trx = await get_transaction(session, trx_id)
+    user = await get_users(session, user_id)
+    sub = Subscription(
+        transaction_id=trx_id)
+    sub.transaction = trx
+    sub.user = user
+
+    session.add(sub)
+
