@@ -9,10 +9,11 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio.client import Redis
 
+from bot.handlers.payments import router as payments_router
+from bot.handlers.profile import r as profile_router
 from bot.handlers.registration import r as callbacks_router
 from bot.handlers.search import router as search_router
 from bot.handlers.start import r as start_router
-from bot.handlers.profile import r as profile_router
 from bot.middlewares.db import DbSessionMiddleware
 
 TOKEN = getenv("BOT_TOKEN")
@@ -24,7 +25,9 @@ async def main() -> None:
     dp.message.middleware(DbSessionMiddleware())
     dp.callback_query.middleware(DbSessionMiddleware())
 
-    dp.include_routers(start_router, callbacks_router, search_router, profile_router)
+    dp.include_routers(
+        start_router, callbacks_router, search_router, profile_router, payments_router
+    )
 
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
     await dp.start_polling(bot)
