@@ -6,7 +6,16 @@ from aiogram.types import LabeledPrice
 from aiogram.types import Message
 from aiogram.types import PreCheckoutQuery
 
+from bot.keyboards.payment_kbs import get_subscription_keyboard
+
 router = Router()
+
+
+async def no_free_searches_left(message: Message):
+    await message.answer(
+        "Бесплатные комбинации закончились. Приобретите подписку.",
+        reply_markup=get_subscription_keyboard(),
+    )
 
 
 @router.message(F.text == "/pay")

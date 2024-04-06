@@ -3,6 +3,7 @@ import logging
 import sys
 from os import getenv
 
+import aiocron
 from aiogram import Bot
 from aiogram import Dispatcher
 from aiogram.enums import ParseMode
@@ -30,7 +31,7 @@ async def main() -> None:
     )
 
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
-    await dp.start_polling(bot)
+    await dp.start_polling(bot, redis=redis_client)
 
 
 if __name__ == "__main__":
