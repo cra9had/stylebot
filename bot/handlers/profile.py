@@ -15,8 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.cbdata import FavouriteItemsFactory
 from bot.cbdata import PageNumFactory
-from bot.db.constants import DEFAULT_MAX_PRICE
-from bot.db.constants import DEFAULT_MIN_PRICE
+from bot.db.constants import Config
 from bot.db.models import Body
 from bot.db.orm import add_settings
 from bot.db.orm import get_bodies
@@ -234,8 +233,8 @@ async def reset_price(callback: CallbackQuery, session: AsyncSession):
     await add_settings(
         session,
         callback.message.chat.id,
-        min_price=DEFAULT_MIN_PRICE,
-        max_price=DEFAULT_MAX_PRICE,
+        min_price=Config.DEFAULT_MIN_PRICE.value,
+        max_price=Config.DEFAULT_MAX_PRICE.value,
     )
 
     await callback.message.delete()

@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from bot.db.models import User, get_session
 from bot.db.orm import add_user, add_settings
-from bot.db.constants import DEFAULT_MAX_PRICE, DEFAULT_MIN_PRICE
+from bot.db.constants import Config
 
 
 class UserExistsMiddleware(BaseMiddleware):
@@ -27,7 +27,7 @@ class UserExistsMiddleware(BaseMiddleware):
             else:
                 await add_user(session, tg_id=from_user.id, tgname=username)
 
-            await add_settings(session, tg_id=from_user.id, min_price=DEFAULT_MIN_PRICE, max_price=DEFAULT_MAX_PRICE)
+            await add_settings(session, tg_id=from_user.id, min_price=Config.DEFAULT_MIN_PRICE.value, max_price=Config.DEFAULT_MAX_PRICE.value)
             print(f"{from_user.username} добавлен в БД.")
 
         else:

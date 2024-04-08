@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import MissingGreenlet
 from sqlalchemy.orm import selectinload
 
-from bot.db.constants import FAVOURITES_IN_PAGE
+from bot.db.constants import Config
 from bot.db.models import User, Body, Geo, Favourite, SearchSettings, Transaction, Subscription
 from wb.data import Product
 
@@ -168,15 +168,15 @@ async def get_favourites(session: AsyncSession, tg_id: int | None = None, wb_ite
 
 async def get_page_favourites(session: AsyncSession, tg_id: int, page: int):
     favourites = await get_favourites(session, tg_id)
-    page_favourites = favourites[(page - 1) * FAVOURITES_IN_PAGE: page * FAVOURITES_IN_PAGE] \
-        if page * FAVOURITES_IN_PAGE < len(favourites) else favourites[(page - 1) * FAVOURITES_IN_PAGE:]
+    page_favourites = favourites[(page - 1) * Config.FAVOURITES_IN_PAGE.value: page * Config.FAVOURITES_IN_PAGE.value] \
+        if page * Config.FAVOURITES_IN_PAGE.value < len(favourites) else favourites[(page - 1) * Config.FAVOURITES_IN_PAGE.value:]
 
     return page_favourites
 
 
 async def get_max_page(session: AsyncSession, tg_id: int):
     favourites = await get_favourites(session, tg_id)
-    max_page = ceil(len(favourites) / FAVOURITES_IN_PAGE) or 1
+    max_page = ceil(len(favourites) / Config.FAVOURITES_IN_PAGE.value) or 1
 
     return max_page
 

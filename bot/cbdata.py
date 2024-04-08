@@ -23,3 +23,9 @@ class FavouriteItemsFactory(CallbackData, prefix='favourite'):
 
 class PageNumFactory(CallbackData, prefix='pagination'):
     page_num: int
+
+
+class SubTariffFactory(CallbackData, prefix='subscription'):
+    name: str
+    likes_quantity: int
+    price: int

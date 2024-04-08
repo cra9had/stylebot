@@ -5,7 +5,6 @@ from aiogram.types import ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-from bot.db.constants import DEFAULT_MAX_PRICE
 from wb.data import Product
 
 
