@@ -49,3 +49,19 @@ def get_tariffs_kb():
     builder.adjust(1)
 
     return builder.as_markup()
+
+
+def get_one_tarif_kb():
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text='Купить подписку', callback_data='buy_sub_menu'
+    )
+
+    builder.button(
+        text='Вернуться назад', callback_data='go_buy_menu'
+    )
+
+    builder.adjust(1)
+
+    return builder.as_markup()

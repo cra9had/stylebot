@@ -10,7 +10,9 @@ from aiogram.types import Message
 from aiogram.types import PreCheckoutQuery
 
 from bot.cbdata import SubTariffFactory
-from bot.keyboards.payment_kbs import get_subscription_keyboard, get_payment_main_menu_kb, get_tariffs_kb
+from bot.db.constants import Subscriptions
+from bot.keyboards.payment_kbs import get_subscription_keyboard, get_payment_main_menu_kb, get_tariffs_kb, \
+    get_one_tarif_kb
 
 router = Router()
 
@@ -38,8 +40,11 @@ async def get_subs(callback: CallbackQuery):
 
 
 @router.callback_query(F.data == 'go_buy_menu')
-async def get_buy_menu(callback: CallbackQuery):
+async def get_buy_menu(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
+    files = (await state.get_data()).get('files', {})
+    await state.clear()
+    await state.update_data(files=files)
     await callback.message.answer(
         """🛒<b>Магазин подписок</b>\n\nНажмите на подписку, чтобы узнать о ней подробнее""",
         reply_markup=get_tariffs_kb()
@@ -60,27 +65,37 @@ async def print_tariff_info(callback: CallbackQuery, callback_data: SubTariffFac
         tariff_photo_id = files.get(callback_data.name)
         await callback.message.answer_photo(photo=tariff_photo_id)
 
-    await callback.message.answer(f"Подписка позволит тебе получать до {callback_data.likes_quantity} комбинаций одежды "
-                                  f"в день всего за {callback_data.price} р.")
+    if callback_data.name != Subscriptions.unlimited.value['name']:
+        msg_text = f"Подписка ✨<b>{callback_data.name.upper()}</b>✨\n\nДО <b>{callback_data.likes_quantity}</b>🔄 разнообразных комбинаций одежды "\
+                   f"в день\n💳Цена: <b>{callback_data.price} р.</b>"
+    else:
+        msg_text = f"С <b>БЕЗЛИМИТНОЙ ПОДПИСКОЙ</b> ты можешь перестать считать образы. У тебя сняты все лимиты за день!" \
+                   f"\nВсего за {callback_data.price} р."
+
+    await state.update_data({"product_title": callback_data.name,
+                             "product_price": callback_data.price,
+                             "product_likes": callback_data.likes_quantity})
+
+    await callback.message.answer(msg_text, reply_markup=get_one_tarif_kb())
     await callback.answer()
 
 
-@router.message(F.text == "/pay")
-async def send_payment_invoice(message: Message):
-    await message.bot.send_invoice(
-        message.chat.id,
-        title="Подписка на бота",
-        description="Активация подписки на бота на 1 месяц",
+@router.callback_query(F.data == "buy_sub_menu")
+async def send_payment_invoice(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    await callback.message.bot.send_invoice(
+        callback.message.chat.id,
+        title=f"Тариф {data['product_title'].upper()}",
+        description=f"Месячная подписка на {data['product_likes']} луков в день",
         provider_token="381764678:TEST:82262",  # TODO: to .env
         currency="rub",
-        photo_url="https://www.aroged.com/wp-content/uploads/2022/06/Telegram-has-a-premium-subscription.jpg",
-        photo_width=416,
-        photo_height=234,
-        photo_size=416,
+        photo_url="https://yoursticker.ru/wp-content/uploads/2021/12/wildberries.jpg",
+        photo_width=800,
+        photo_height=600,
         is_flexible=False,
-        prices=[LabeledPrice(label="Подписка на 1 месяц", amount=500 * 100)],
+        prices=[LabeledPrice(label="Подписка на 1 месяц", amount=data['product_price'] * 100)],
         start_parameter="one-month-subscription",
-        payload="test-invoice-payload",
+        payload=f"{data['product_title']}",
     )
 
 
