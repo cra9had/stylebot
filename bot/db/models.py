@@ -116,19 +116,19 @@ class Transaction(Base):
     date_creation: Mapped[int]
     date_payment: Mapped[Optional[int]]
     transaction_type: Mapped[str]
-    tg_id: Mapped[int] = mapped_column(ForeignKey('users.tg_id'))
+    tg_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.tg_id'))
 
     user: Mapped["User"] = relationship(back_populates='transactions')
-    subscription: Mapped["Subscription"] = relationship(back_populates='transaction')
+    subscription: Mapped["Subscription"] = relationship(back_populates='transaction', uselist=False)
     def __repr__(self):
-        return f'{self.id=} {self.date_creation=} {self.transaction_type=}'
+        return f'{self.id=} {self.date_creation=} {self.date_payment=} {self.transaction_type=}'
 
 
 class Subscription(Base):
     __tablename__ = 'subscriptions'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     transaction_id: Mapped[int] = mapped_column(ForeignKey('transactions.id'))
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.tg_id'))
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.tg_id'))
 
     transaction: Mapped["Transaction"] = relationship(back_populates='subscription')
     user: Mapped["User"] = relationship(back_populates='subscriptions')

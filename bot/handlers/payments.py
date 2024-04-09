@@ -1,3 +1,4 @@
+import datetime
 import os.path
 
 from aiogram import Bot
@@ -12,7 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.cbdata import SubTariffFactory
 from bot.db.constants import Subscriptions
-from bot.db.orm import create_transaction, get_transactions
+from bot.db.models import Subscription
+from bot.db.orm import create_transaction, get_transactions, create_subscription, get_subscriptions, \
+    get_user_subscription
 from bot.keyboards.payment_kbs import get_subscription_keyboard, get_payment_main_menu_kb, get_tariffs_kb, \
     get_one_tarif_kb
 
@@ -27,15 +30,23 @@ async def no_free_searches_left(message: Message):
 
 
 @router.callback_query(F.data == 'go_payment_menu')
-async def get_subs(callback: CallbackQuery):
+async def get_subs(callback: CallbackQuery, session: AsyncSession):
     await callback.message.delete()
-    user_subs = []
-    if user_subs:
-        msg_text = '🎟Ваши подписки:\n'
-        for sub in user_subs:
-            msg_text += f'- {sub}\n'
+    user_sub: Subscription = await get_user_subscription(session, callback.message.chat.id)
+    if user_sub:
+        msg_text = 'Ваша подписка: '
+        sub_name = user_sub.transaction.transaction_type
+        msg_text += f'🎟<b>{sub_name.upper()}</b>\n'
+        if sub_name != Subscriptions.unlimited.value['name']:
+            msg_text += f'Вам доступно <b>{user_sub["likes_quantity"].upper()}</b>🔄 ежедневных образов!\n'
+        else:
+            msg_text += f'Вам доступно <b>безлимитное количество</b> ежедневных образов!\n'
+
+        msg_text += f'Подписка действует до {datetime.datetime.fromtimestamp(user_sub.transaction.date_payment)}'
+
     else:
         msg_text = 'У вас пока нет подписок.\nЧтобы её получить, нажмите на 🛒<b>Купить подписку</b>'
+
     await callback.message.answer(text=msg_text,
                                   reply_markup=get_payment_main_menu_kb())
     await callback.answer()
@@ -99,8 +110,9 @@ async def send_payment_invoice(callback: CallbackQuery, state: FSMContext, sessi
         payload=f"{data['product_title']}",
     )
 
-    await create_transaction(session=session, transaction_type=data['product_title'], tg_id=callback.message.chat.id)
-    await callback.message.answer(text=f'{await get_transactions(session=session)}')
+    trx_id = await create_transaction(session=session, transaction_type=data['product_title'], tg_id=callback.message.chat.id)
+    await state.update_data(trx_id=trx_id)
+    await callback.message.answer(text=f'{await get_transactions(session, user_id=callback.message.chat.id)}')
     await callback.answer()
 
 
@@ -111,13 +123,14 @@ async def pre_checkout_query(pre_checkout_q: PreCheckoutQuery, bot: Bot):
 
 # successful payment
 @router.message(F.successful_payment)
-async def successful_payment(message: Message):
+async def successful_payment(message: Message, session: AsyncSession, state: FSMContext):
     print("SUCCESSFUL PAYMENT:")
     payment_info = message.successful_payment
     for k, v in payment_info:
         print(f"{k} = {v}")
+    sub_id = await create_subscription(session, (await state.get_data()).get('trx_id'), message.chat.id)
 
     await message.bot.send_message(
         message.chat.id,
-        f"Платеж на сумму {message.successful_payment.total_amount // 100}",
+        f"Платеж на сумму {message.successful_payment.total_amount // 100} subscr: {sub_id}",
     )

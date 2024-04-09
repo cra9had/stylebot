@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.exc import MissingGreenlet
 from sqlalchemy.orm import selectinload
 
-from bot.db.constants import Config
+from bot.db.constants import Config, Subscriptions
 from bot.db.models import User, Body, Geo, Favourite, SearchSettings, Transaction, Subscription
 from wb.data import Product
 
@@ -169,7 +169,8 @@ async def get_favourites(session: AsyncSession, tg_id: int | None = None, wb_ite
 async def get_page_favourites(session: AsyncSession, tg_id: int, page: int):
     favourites = await get_favourites(session, tg_id)
     page_favourites = favourites[(page - 1) * Config.FAVOURITES_IN_PAGE.value: page * Config.FAVOURITES_IN_PAGE.value] \
-        if page * Config.FAVOURITES_IN_PAGE.value < len(favourites) else favourites[(page - 1) * Config.FAVOURITES_IN_PAGE.value:]
+        if page * Config.FAVOURITES_IN_PAGE.value < len(favourites) else favourites[
+                                                                         (page - 1) * Config.FAVOURITES_IN_PAGE.value:]
 
     return page_favourites
 
@@ -271,33 +272,42 @@ async def add_settings(session: AsyncSession, tg_id: int, min_price: int | None 
 
 # create_transaction, confirm_transaction(trx_id), create_subscription
 
-async def create_transaction(session: AsyncSession, tg_id: int, transaction_type: str):
+async def create_transaction(session: AsyncSession, tg_id: int, transaction_type: str) -> int:
     try:
         transaction = Transaction(tg_id=tg_id,
                                   date_creation=int(datetime.now().timestamp()),
                                   transaction_type=transaction_type)
 
         session.add(transaction)
+        await session.commit()
+        await session.refresh(transaction)
+
+        return transaction.id
     except Exception as e:
         print(f"Error creating transaction: {e}")
 
 
-async def get_transactions(session: AsyncSession, trx_id: int | None = None):
-    if trx_id:
+async def get_transactions(session: AsyncSession, user_id: int | None = None, trx_id: int | None = None):
+    if user_id:
+        trans_query = await session.execute(
+            select(Transaction).filter(Transaction.tg_id == user_id).options(selectinload(Transaction.subscription))
+        )
+    elif trx_id:
         trans_query = await session.execute(
             select(Transaction).filter(Transaction.id == trx_id).options(selectinload(Transaction.subscription))
         )
-
         return trans_query.scalar_one_or_none()
+
     else:
         trans_query = await session.execute(
             select(Transaction).options(selectinload(Transaction.subscription))
         )
-        return trans_query.scalar()
+
+    return trans_query.scalars().all()
 
 
-async def confirm_transaction(session: AsyncSession, trx_id: int, payment_date: int | datetime | None):
-    trans = await get_transactions(session, trx_id)
+async def confirm_transaction(session: AsyncSession, trx_id: int, payment_date: int | datetime | None = None):
+    trans = await get_transactions(session, trx_id=trx_id)
 
     if payment_date and isinstance(payment_date, datetime):
         payment_date = int(payment_date.timestamp())
@@ -311,9 +321,10 @@ async def confirm_transaction(session: AsyncSession, trx_id: int, payment_date: 
 
 
 async def create_subscription(session: AsyncSession, trx_id: int, user_id: int):
-
-    trx = await get_transactions(session, trx_id)
+    trx = await get_transactions(session, trx_id=trx_id)
+    await confirm_transaction(session, trx_id)
     user = await get_users(session, user_id)
+
     sub = Subscription(
         transaction_id=trx_id)
     sub.transaction = trx
@@ -321,3 +332,37 @@ async def create_subscription(session: AsyncSession, trx_id: int, user_id: int):
 
     session.add(sub)
 
+    await session.commit()
+    await session.refresh(sub)
+
+    print(f"Subscription created with ID: {sub.id}")
+    return sub.id
+
+
+async def get_subscriptions(session: AsyncSession, tg_id: int | None = None):
+    if tg_id:
+        trans_query = await session.execute(
+            select(Subscription).filter(Subscription.user_id == tg_id).options(selectinload(Subscription.transaction),
+                                                                               selectinload(Subscription.user))
+        )
+    else:
+        trans_query = await session.execute(
+            select(Transaction).options(selectinload(Subscription.transaction),
+                                        selectinload(Subscription.user))
+        )
+
+    return trans_query.scalars().all()
+
+
+async def get_user_subscription(session: AsyncSession, user_id: int):
+    subs = await get_subscriptions(session, user_id)
+    max_sub_price = 0
+    result_sub = None
+
+    for sub in subs:
+        tariff_type = sub.transaction.transaction_type
+        subscription_details = getattr(Subscriptions, tariff_type).value
+        if subscription_details['price'] > max_sub_price:
+            result_sub = sub
+
+    return result_sub
