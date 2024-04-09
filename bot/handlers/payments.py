@@ -42,7 +42,7 @@ async def get_subs(callback: CallbackQuery, session: AsyncSession):
         else:
             msg_text += f'Вам доступно <b>безлимитное количество</b> ежедневных образов!\n'
 
-        msg_text += f'Подписка действует до {datetime.datetime.fromtimestamp(user_sub.transaction.date_payment)}'
+        msg_text += f'Подписка действует до {datetime.datetime.fromtimestamp(user_sub.transaction.date_payment) + datetime.timedelta(days=31)}'
 
     else:
         msg_text = 'У вас пока нет подписок.\nЧтобы её получить, нажмите на 🛒<b>Купить подписку</b>'
