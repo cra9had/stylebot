@@ -268,9 +268,9 @@ async def paginate_search(message: Message, state: FSMContext, redis: Redis):
 
 
 @router.callback_query(F.data == "back_to_search")
-async def back_to_search(call: CallbackQuery, state: FSMContext):
+async def back_to_search(call: CallbackQuery, state: FSMContext, redis: Redis):
     await call.message.delete()
-    await next_paginate(call.message, state)
+    await next_paginate(call.message, state, redis)
 
 
 @router.message(F.text.in_(["🔍Продолжить поиск", ">"]), SearchStates.searching)
