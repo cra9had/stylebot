@@ -24,14 +24,14 @@ async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence
     if not tg_id:
         users_request = await session.execute(
             select(User).options(selectinload(User.body), selectinload(User.geo), selectinload(User.favourites),
-                                 selectinload(User.settings), selectinload(User.subscription))
+                                 selectinload(User.settings), selectinload(User.subscriptions))
         )
         return users_request.scalars().all()
     else:
         users_request = await session.execute(
             select(User).where(User.tg_id == tg_id).options(selectinload(User.body), selectinload(User.geo),
                                                             selectinload(User.favourites), selectinload(User.settings),
-                                                            selectinload(User.subscription))
+                                                            selectinload(User.subscriptions))
         )
         return users_request.scalar()
 
@@ -282,16 +282,22 @@ async def create_transaction(session: AsyncSession, tg_id: int, transaction_type
         print(f"Error creating transaction: {e}")
 
 
-async def get_transaction(session: AsyncSession, trx_id: int):
-    trans_query = await session.execute(
-        select(Transaction).filter(Transaction.id == trx_id).options(selectinload(Transaction.subscription))
-    )
+async def get_transactions(session: AsyncSession, trx_id: int | None = None):
+    if trx_id:
+        trans_query = await session.execute(
+            select(Transaction).filter(Transaction.id == trx_id).options(selectinload(Transaction.subscription))
+        )
 
-    return trans_query.scalar_one_or_none()
+        return trans_query.scalar_one_or_none()
+    else:
+        trans_query = await session.execute(
+            select(Transaction).options(selectinload(Transaction.subscription))
+        )
+        return trans_query.scalar()
 
 
 async def confirm_transaction(session: AsyncSession, trx_id: int, payment_date: int | datetime | None):
-    trans = await get_transaction(session, trx_id)
+    trans = await get_transactions(session, trx_id)
 
     if payment_date and isinstance(payment_date, datetime):
         payment_date = int(payment_date.timestamp())
@@ -306,7 +312,7 @@ async def confirm_transaction(session: AsyncSession, trx_id: int, payment_date: 
 
 async def create_subscription(session: AsyncSession, trx_id: int, user_id: int):
 
-    trx = await get_transaction(session, trx_id)
+    trx = await get_transactions(session, trx_id)
     user = await get_users(session, user_id)
     sub = Subscription(
         transaction_id=trx_id)

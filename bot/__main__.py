@@ -25,6 +25,7 @@ dp = Dispatcher(storage=RedisStorage(redis=redis_client))
 async def main() -> None:
     dp.message.middleware(DbSessionMiddleware())
     dp.callback_query.middleware(DbSessionMiddleware())
+    dp.pre_checkout_query.middleware(DbSessionMiddleware())
 
     dp.include_routers(
         start_router, callbacks_router, search_router, profile_router, payments_router

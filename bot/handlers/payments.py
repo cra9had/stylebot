@@ -8,9 +8,11 @@ from aiogram.types import CallbackQuery, FSInputFile
 from aiogram.types import LabeledPrice
 from aiogram.types import Message
 from aiogram.types import PreCheckoutQuery
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.cbdata import SubTariffFactory
 from bot.db.constants import Subscriptions
+from bot.db.orm import create_transaction, get_transactions
 from bot.keyboards.payment_kbs import get_subscription_keyboard, get_payment_main_menu_kb, get_tariffs_kb, \
     get_one_tarif_kb
 
@@ -54,7 +56,6 @@ async def get_buy_menu(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(SubTariffFactory.filter())
 async def print_tariff_info(callback: CallbackQuery, callback_data: SubTariffFactory, state: FSMContext):
-
     files = (await state.get_data()).get('files', {})
     if not files or callback_data.name not in files:
         tariff_photo = FSInputFile(path=os.path.join('bot', 'data', f'{callback_data.name}.png'))
@@ -66,7 +67,7 @@ async def print_tariff_info(callback: CallbackQuery, callback_data: SubTariffFac
         await callback.message.answer_photo(photo=tariff_photo_id)
 
     if callback_data.name != Subscriptions.unlimited.value['name']:
-        msg_text = f"Подписка ✨<b>{callback_data.name.upper()}</b>✨\n\nДО <b>{callback_data.likes_quantity}</b>🔄 разнообразных комбинаций одежды "\
+        msg_text = f"Подписка ✨<b>{callback_data.name.upper()}</b>✨\n\nДО <b>{callback_data.likes_quantity}</b>🔄 разнообразных комбинаций одежды " \
                    f"в день\n💳Цена: <b>{callback_data.price} р.</b>"
     else:
         msg_text = f"С <b>БЕЗЛИМИТНОЙ ПОДПИСКОЙ</b> ты можешь перестать считать образы. У тебя сняты все лимиты за день!" \
@@ -81,7 +82,7 @@ async def print_tariff_info(callback: CallbackQuery, callback_data: SubTariffFac
 
 
 @router.callback_query(F.data == "buy_sub_menu")
-async def send_payment_invoice(callback: CallbackQuery, state: FSMContext):
+async def send_payment_invoice(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     data = await state.get_data()
     await callback.message.bot.send_invoice(
         callback.message.chat.id,
@@ -97,6 +98,10 @@ async def send_payment_invoice(callback: CallbackQuery, state: FSMContext):
         start_parameter="one-month-subscription",
         payload=f"{data['product_title']}",
     )
+
+    await create_transaction(session=session, transaction_type=data['product_title'], tg_id=callback.message.chat.id)
+    await callback.message.answer(text=f'{await get_transactions(session=session)}')
+    await callback.answer()
 
 
 @router.pre_checkout_query()

@@ -30,8 +30,8 @@ class User(Base):
     geo: Mapped["Geo"] = relationship(back_populates="user")
     favourites: Mapped[List["Favourite"]] = relationship(back_populates="user")
     settings: Mapped[List["SearchSettings"]] = relationship(back_populates="user")
-    subscription: Mapped["Subscription"] = relationship(back_populates='user', uselist=False)
-
+    subscriptions: Mapped[List["Subscription"]] = relationship(back_populates='user')
+    transactions: Mapped[List["Transaction"]] = relationship(back_populates='user')
     def __repr__(self):
         return f"{self.tg_id=} {self.tgname=}"
 
@@ -116,7 +116,9 @@ class Transaction(Base):
     date_creation: Mapped[int]
     date_payment: Mapped[Optional[int]]
     transaction_type: Mapped[str]
+    tg_id: Mapped[int] = mapped_column(ForeignKey('users.tg_id'))
 
+    user: Mapped["User"] = relationship(back_populates='transactions')
     subscription: Mapped["Subscription"] = relationship(back_populates='transaction')
     def __repr__(self):
         return f'{self.id=} {self.date_creation=} {self.transaction_type=}'
@@ -129,7 +131,7 @@ class Subscription(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey('users.tg_id'))
 
     transaction: Mapped["Transaction"] = relationship(back_populates='subscription')
-    user: Mapped["User"] = relationship(back_populates='subscription')
+    user: Mapped["User"] = relationship(back_populates='subscriptions')
 
 
 
