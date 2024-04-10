@@ -7,7 +7,6 @@ from typing import List
 from aiogram import F
 from aiogram import Router
 from aiogram.fsm.context import FSMContext
-from aiogram.methods.answer_callback_query import AnswerCallbackQuery
 from aiogram.types import CallbackQuery
 from aiogram.types import InlineKeyboardButton
 from aiogram.types import InlineKeyboardMarkup
@@ -16,6 +15,7 @@ from aiogram.types import Message
 from aiogram.types import ReplyKeyboardMarkup
 from aiogram.types import URLInputFile
 from aiogram.utils.media_group import MediaGroupBuilder
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.models import SearchSettings
@@ -31,9 +31,11 @@ from bot.keyboards.search_kbs import return_to_menu_kb
 from bot.keyboards.search_kbs import start_search_kb
 from bot.states import AdjustSettings
 from bot.states import SearchStates
+from bot.utils.user_search_counter import search_counter
 from services.gpt import BadClothesException
 from services.gpt import ChatGPT
 from wb.api import WildBerriesAPI
+from wb.data import Filters
 from wb.data import Product
 
 router = Router()
@@ -86,7 +88,6 @@ async def get_min_price(message: Message, state: FSMContext):
 async def get_max_price(message: Message, state: FSMContext, session: AsyncSession):
     try:
         max_price = int(message.text)
-        await state.update_data(max_price=max_price)
         min_price = (await state.get_data()).get("min_price", 0)
         if min_price > max_price:
             await message.answer(
@@ -96,24 +97,61 @@ async def get_max_price(message: Message, state: FSMContext, session: AsyncSessi
             await message.answer(
                 "Если хочешь попробовать снова, введи минимальную цену за весь образ (в рублях)"
             )
+            await state.clear()
             await state.set_state(AdjustSettings.adjust_min_price)
+
+        await state.update_data(max_price=max_price)
+        await state.set_state(AdjustSettings.adjust_is_original)
         await message.answer(
-            "Настройки поиска сохранены.", reply_markup=start_search_kb()
+            "Формируем комбинации только из оригинальных вещей?",
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text="Да ✅", callback_data="original_yes"
+                        ),
+                        InlineKeyboardButton(
+                            text="Нет ❌", callback_data="original_no"
+                        ),
+                    ]
+                ]
+            ),
         )
-        await add_settings(
-            session=session,
-            tg_id=message.chat.id,
-            min_price=min_price,
-            max_price=max_price,
-        )
-        await state.set_state(AdjustSettings.adjust_max_price)
     except ValueError:
         await message.answer("Неправильно введённая цена. Введи ещё раз.")
         return
 
 
+@router.callback_query(
+    F.data.startswith("original_"), AdjustSettings.adjust_is_original
+)
+async def change_is_original(
+    callback: CallbackQuery, session: AsyncSession, state: FSMContext
+):
+    data = await state.get_data()
+
+    await callback.message.delete()
+
+    await callback.message.answer(
+        "Настройки поиска сохранены.", reply_markup=start_search_kb()
+    )
+
+    await add_settings(
+        session=session,
+        tg_id=callback.message.chat.id,
+        min_price=data["min_price"],
+        max_price=data["max_price"],
+        is_original=1 if callback.data == "original_yes" else 0,
+    )
+
+    await state.clear()
+    await callback.answer()
+
+
 @router.message(SearchStates.prompt)
-async def search_prompt(message: Message, state: FSMContext, session: AsyncSession):
+async def search_prompt(
+    message: Message, state: FSMContext, redis: Redis, session: AsyncSession
+):
     body = await get_bodies(session, message.chat.id)
 
     prompt = message.text
@@ -137,10 +175,12 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
         return
 
     settings: SearchSettings = await get_settings(session, message.chat.id)
-
     wb = WildBerriesAPI()
     combinations = wb.get_combinations(
-        *[await wb.search(query) for query in queries],
+        *[
+            await wb.search(query, filters=Filters(is_original=settings.is_original))
+            for query in queries
+        ],
         min_price=settings.min_price,
         max_price=settings.max_price,
     )
@@ -150,7 +190,7 @@ async def search_prompt(message: Message, state: FSMContext, session: AsyncSessi
     await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
     await temp_msg.delete()
     await state.set_state(SearchStates.searching)
-    await paginate_search(message, state)
+    await paginate_search(message, state, redis)
 
 
 async def _get_current_products(state: FSMContext) -> List[Product]:
@@ -204,7 +244,7 @@ async def _get_products(state: FSMContext) -> List[Product]:
     return [Product(**product) for product in combinations[current_index]]
 
 
-async def paginate_search(message: Message, state: FSMContext):
+async def paginate_search(message: Message, state: FSMContext, redis: Redis):
     try:
         products = await _get_current_products(state)
         summary_price = sum([product.price for product in products])
@@ -228,23 +268,24 @@ async def paginate_search(message: Message, state: FSMContext):
 
 
 @router.callback_query(F.data == "back_to_search")
-async def back_to_search(call: CallbackQuery, state: FSMContext):
+async def back_to_search(call: CallbackQuery, state: FSMContext, redis: Redis):
     await call.message.delete()
-    await next_paginate(call.message, state)
+    await next_paginate(call.message, state, redis)
 
 
 @router.message(F.text.in_(["🔍Продолжить поиск", ">"]), SearchStates.searching)
-async def next_paginate(message: Message, state: FSMContext):
+@search_counter
+async def next_paginate(message: Message, state: FSMContext, redis: Redis):
     if message.text == "🔍Продолжить поиск":
         await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
     await state.update_data(
         {"current_index": (await state.get_data()).get("current_index", 0) + 1}
     )
-    await paginate_search(message, state)
+    await paginate_search(message, state, redis)
 
 
 @router.message(F.text.in_(["<"]), SearchStates.searching)
-async def prev_paginate(message: Message, state: FSMContext):
+async def prev_paginate(message: Message, state: FSMContext, redis: Redis):
     if message.text == "🔍Продолжить поиск":
         await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
 
@@ -254,7 +295,7 @@ async def prev_paginate(message: Message, state: FSMContext):
     await state.update_data(
         {"current_index": (await state.get_data()).get("current_index", 0) - 1}
     )
-    await paginate_search(message, state)
+    await paginate_search(message, state, redis)
 
 
 @router.message(F.text == "Закрепить элемент")
@@ -262,7 +303,7 @@ async def pin_element(message: Message, state: FSMContext):
     products = await _get_current_products(state)
     text = "Выбери элементы одежды которые нужно закрепить:\n"
     for i, product in enumerate(products):
-        text += f"{i+1}. {product.name}\n"
+        text += f"{i + 1}. {product.name}\n"
     print(f"{products=}")
     await message.answer(
         text,

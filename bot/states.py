@@ -22,3 +22,4 @@ class AdjustSettings(StatesGroup):
 
     adjust_min_price = State()
     adjust_max_price = State()
+    adjust_is_original = State()

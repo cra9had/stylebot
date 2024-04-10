@@ -15,8 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.cbdata import FavouriteItemsFactory
 from bot.cbdata import PageNumFactory
-from bot.db.constants import DEFAULT_MAX_PRICE
-from bot.db.constants import DEFAULT_MIN_PRICE
+from bot.db.constants import Config
 from bot.db.models import Body
 from bot.db.orm import add_settings
 from bot.db.orm import get_bodies
@@ -74,7 +73,7 @@ async def go_main_menu(message: Message, state: FSMContext):
 
 @r.callback_query(F.data == "go_favourite_menu")
 async def go_main_menu(
-    callback: CallbackQuery, session: AsyncSession, state: FSMContext
+        callback: CallbackQuery, session: AsyncSession, state: FSMContext
 ):
     await callback.message.delete()
 
@@ -100,10 +99,10 @@ async def go_main_menu(
 
 @r.callback_query(PageNumFactory.filter())
 async def go_next_page(
-    callback: CallbackQuery,
-    session: AsyncSession,
-    state: FSMContext,
-    callback_data: PageNumFactory,
+        callback: CallbackQuery,
+        session: AsyncSession,
+        state: FSMContext,
+        callback_data: PageNumFactory,
 ):
     data = await state.get_data()
     max_page = data["max_page"]
@@ -123,7 +122,7 @@ async def go_next_page(
 
 @r.callback_query(FavouriteItemsFactory.filter())
 async def get_favourite_item(
-    callback: CallbackQuery, session: AsyncSession, callback_data: FavouriteItemsFactory
+        callback: CallbackQuery, session: AsyncSession, callback_data: FavouriteItemsFactory
 ):
     await callback.message.delete()
 
@@ -208,7 +207,6 @@ async def set_max_price(message: Message, state: FSMContext, session: AsyncSessi
         if settings.min_price < int(new_max_price):
             await message.bot.delete_message(message.chat.id, del_msg_id)
             await add_settings(session, message.chat.id, max_price=new_max_price)
-
             to_delete = await message.answer("Новое значение записано.")
             await asyncio.sleep(1)
             await to_delete.delete()
@@ -225,6 +223,7 @@ async def set_max_price(message: Message, state: FSMContext, session: AsyncSessi
                     ]
                 ),
             )
+
     except ValueError:
         return
 
@@ -234,8 +233,8 @@ async def reset_price(callback: CallbackQuery, session: AsyncSession):
     await add_settings(
         session,
         callback.message.chat.id,
-        min_price=DEFAULT_MIN_PRICE,
-        max_price=DEFAULT_MAX_PRICE,
+        min_price=Config.DEFAULT_MIN_PRICE.value,
+        max_price=Config.DEFAULT_MAX_PRICE.value,
     )
 
     await callback.message.delete()

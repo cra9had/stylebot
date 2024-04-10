@@ -1,6 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.db.constants import DEFAULT_MAX_PRICE
+from bot.db.constants import Config
 from bot.db.models import Favourite
 from bot.cbdata import FavouriteItemsFactory, PageNumFactory
 
@@ -14,10 +14,10 @@ def make_profile_kb():
         text='⭐Избранное', callback_data='go_favourite_menu'
     )
     builder.button(
-        text='🧢Профиль', callback_data='go_profile_menu'
+        text='🧢Мои размеры', callback_data='go_profile_menu'
     )
     builder.button(
-        text='✅Пополнить баланс', callback_data='go_payment_menu'
+        text='🎟️Подписки', callback_data='go_payment_menu'
     )
 
     builder.adjust(2)
@@ -88,7 +88,7 @@ def get_price_kb(min_price: int | None = None, max_price: int | None = None):
 
     builder.button(text=f"{min_price} ₽", callback_data="change_min_price")
 
-    if max_price != DEFAULT_MAX_PRICE:
+    if max_price != Config.DEFAULT_MAX_PRICE.value:
         builder.button(text=f"{max_price} ₽", callback_data="change_max_price")
     else:
         builder.button(text=f"∞", callback_data="change_max_price")

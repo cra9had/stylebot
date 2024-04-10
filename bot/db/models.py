@@ -30,6 +30,7 @@ class User(Base):
     geo: Mapped["Geo"] = relationship(back_populates="user")
     favourites: Mapped[List["Favourite"]] = relationship(back_populates="user")
     settings: Mapped[List["SearchSettings"]] = relationship(back_populates="user")
+    subscription: Mapped["Subscription"] = relationship(back_populates='user', uselist=False)
 
     def __repr__(self):
         return f"{self.tg_id=} {self.tgname=}"
@@ -98,6 +99,7 @@ class SearchSettings(Base):
     )
     min_price: Mapped[Optional[int]]
     max_price: Mapped[Optional[int]]
+    is_original: Mapped[Optional[int]]
 
     user: Mapped[List["User"]] = relationship(back_populates="settings")
 
@@ -106,6 +108,29 @@ class SearchSettings(Base):
 
     def get_prices(self):
         return self.min_price, self.max_price
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    date_creation: Mapped[int]
+    date_payment: Mapped[Optional[int]]
+    transaction_type: Mapped[str]
+
+    subscription: Mapped["Subscription"] = relationship(back_populates='transaction')
+    def __repr__(self):
+        return f'{self.id=} {self.date_creation=} {self.transaction_type=}'
+
+
+class Subscription(Base):
+    __tablename__ = 'subscriptions'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    transaction_id: Mapped[int] = mapped_column(ForeignKey('transactions.id'))
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.tg_id'))
+
+    transaction: Mapped["Transaction"] = relationship(back_populates='subscription')
+    user: Mapped["User"] = relationship(back_populates='subscription')
+
 
 
 DATABASE_URL = getenv("DB_URL")
