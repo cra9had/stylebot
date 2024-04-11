@@ -32,6 +32,7 @@ class User(Base):
     settings: Mapped[List["SearchSettings"]] = relationship(back_populates="user")
     subscriptions: Mapped[List["Subscription"]] = relationship(back_populates='user')
     transactions: Mapped[List["Transaction"]] = relationship(back_populates='user')
+
     def __repr__(self):
         return f"{self.tg_id=} {self.tgname=}"
 
@@ -120,6 +121,7 @@ class Transaction(Base):
 
     user: Mapped["User"] = relationship(back_populates='transactions')
     subscription: Mapped["Subscription"] = relationship(back_populates='transaction', uselist=False)
+
     def __repr__(self):
         return f'{self.id=} {self.date_creation=} {self.date_payment=} {self.transaction_type=}'
 
@@ -132,7 +134,6 @@ class Subscription(Base):
 
     transaction: Mapped["Transaction"] = relationship(back_populates='subscription')
     user: Mapped["User"] = relationship(back_populates='subscriptions')
-
 
 
 DATABASE_URL = getenv("DB_URL")

@@ -2,8 +2,8 @@ version: "3.8"
 services:
   bot:
     build: .
+    command: "python -m bot"
     container_name: bot
-    command: python -m bot
     volumes:
       - .:/app
     env_file:
@@ -38,6 +38,18 @@ services:
       - REDIS_PASSWORD=botPass
       - REDIS_PORT=6379
       - REDIS_DATABASES=16
+
+  sub_checker:
+    build: .
+    command: "python checks_subscriptions.py"
+    container_name: sub_checker
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
 
 volumes:
   db-data:

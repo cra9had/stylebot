@@ -12,6 +12,8 @@ from bot.db.constants import Config, Subscriptions
 from bot.db.models import User, Body, Geo, Favourite, SearchSettings, Transaction, Subscription
 from wb.data import Product
 
+SUBSCRIPTION_VITALITY = 15
+
 
 async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence[User] | User | None:
     """
@@ -24,7 +26,8 @@ async def get_users(session: AsyncSession, tg_id: int | None = None) -> Sequence
     if not tg_id:
         users_request = await session.execute(
             select(User).options(selectinload(User.body), selectinload(User.geo), selectinload(User.favourites),
-                                 selectinload(User.settings), selectinload(User.subscriptions))
+                                 selectinload(User.settings), selectinload(User.subscriptions),
+                                 selectinload(User.transactions))
         )
         return users_request.scalars().all()
     else:

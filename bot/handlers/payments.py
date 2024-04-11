@@ -15,7 +15,7 @@ from bot.cbdata import SubTariffFactory
 from bot.db.constants import Subscriptions
 from bot.db.models import Subscription
 from bot.db.orm import create_transaction, get_transactions, create_subscription, get_subscriptions, \
-    get_user_subscription
+    get_user_subscription, SUBSCRIPTION_VITALITY
 from bot.keyboards.payment_kbs import get_subscription_keyboard, get_payment_main_menu_kb, get_tariffs_kb, \
     get_one_tarif_kb
 
@@ -38,11 +38,11 @@ async def get_subs(callback: CallbackQuery, session: AsyncSession):
         sub_name = user_sub.transaction.transaction_type
         msg_text += f'🎟<b>{sub_name.upper()}</b>\n'
         if sub_name != Subscriptions.unlimited.value['name']:
-            msg_text += f'Вам доступно <b>{user_sub["likes_quantity"].upper()}</b>🔄 ежедневных образов!\n'
+            msg_text += f'Вам доступно <b>{getattr(Subscriptions, sub_name).value["likes_quantity"]}</b>🔄 ежедневных образов!\n'
         else:
             msg_text += f'Вам доступно <b>безлимитное количество</b> ежедневных образов!\n'
 
-        msg_text += f'Подписка действует до {datetime.datetime.fromtimestamp(user_sub.transaction.date_payment) + datetime.timedelta(days=31)}'
+        msg_text += f'Подписка действует до {datetime.datetime.fromtimestamp(user_sub.transaction.date_payment) + datetime.timedelta(seconds=SUBSCRIPTION_VITALITY)}'
 
     else:
         msg_text = 'У вас пока нет подписок.\nЧтобы её получить, нажмите на 🛒<b>Купить подписку</b>'
