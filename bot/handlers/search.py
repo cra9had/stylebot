@@ -268,14 +268,18 @@ async def paginate_search(message: Message, state: FSMContext, redis: Redis):
 
 
 @router.callback_query(F.data == "back_to_search")
-async def back_to_search(call: CallbackQuery, state: FSMContext, redis: Redis):
+async def back_to_search(
+    call: CallbackQuery, state: FSMContext, redis: Redis, session: AsyncSession
+):
     await call.message.delete()
-    await next_paginate(call.message, state, redis)
+    await next_paginate(call.message, state, redis, session)
 
 
-@router.message(F.text.in_(["🔍Продолжить поиск", ">"]), SearchStates.searching)
+@router.message(F.text.in_(["🔍Продолжить поиск", "👉"]), SearchStates.searching)
 @search_counter
-async def next_paginate(message: Message, state: FSMContext, redis: Redis):
+async def next_paginate(
+    message: Message, state: FSMContext, redis: Redis, session: AsyncSession
+):
     if message.text == "🔍Продолжить поиск":
         await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())
     await state.update_data(
@@ -284,7 +288,7 @@ async def next_paginate(message: Message, state: FSMContext, redis: Redis):
     await paginate_search(message, state, redis)
 
 
-@router.message(F.text.in_(["<"]), SearchStates.searching)
+@router.message(F.text.in_(["👈"]), SearchStates.searching)
 async def prev_paginate(message: Message, state: FSMContext, redis: Redis):
     if message.text == "🔍Продолжить поиск":
         await message.answer("Загружаю...", reply_markup=kb.get_search_keyboard())

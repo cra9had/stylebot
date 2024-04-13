@@ -11,10 +11,10 @@ from wb.data import Product
 def get_search_keyboard() -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     builder.button(
-        text="<",
+        text="👈",
     )
     builder.button(
-        text=">",
+        text="👉",
     )
     builder.button(
         text="Показать артикулы",
