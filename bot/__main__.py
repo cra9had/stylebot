@@ -22,6 +22,11 @@ redis_client = Redis.from_url("redis://redis:6379/1")
 dp = Dispatcher(storage=RedisStorage(redis=redis_client))
 
 
+async def reset_redis_counter():
+    async for key in redis_client.scan_iter("search_counter_user_*"):
+        await redis_client.delete(key)
+
+
 async def main() -> None:
     dp.message.middleware(DbSessionMiddleware())
     dp.callback_query.middleware(DbSessionMiddleware())
@@ -30,7 +35,7 @@ async def main() -> None:
     dp.include_routers(
         start_router, callbacks_router, search_router, profile_router, payments_router
     )
-
+    t = aiocron.crontab("0 0 * * *", func=reset_redis_counter)
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
     await dp.start_polling(bot, redis=redis_client)
 

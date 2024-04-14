@@ -2,12 +2,20 @@ import asyncio
 from datetime import datetime
 from os import getenv
 
+from redis.asyncio.client import Redis
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import selectinload, sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import sessionmaker
 
-from bot.db.models import User, Subscription, get_session, init_models
-from bot.db.orm import get_users, SUBSCRIPTION_VITALITY
+from bot.db.models import get_session
+from bot.db.models import init_models
+from bot.db.models import Subscription
+from bot.db.models import User
+from bot.db.orm import get_users
+from bot.db.orm import SUBSCRIPTION_VITALITY
 
 
 async def check_users_subscriptions(session: AsyncSession):
@@ -21,20 +29,27 @@ async def check_user_subscriptions(session: AsyncSession, tg_id: int):
     result = await session.execute(
         select(User)
         .where(User.tg_id == tg_id)
-        .options(selectinload(User.subscriptions).selectinload(Subscription.transaction))
+        .options(
+            selectinload(User.subscriptions).selectinload(Subscription.transaction)
+        )
     )
 
     user = result.scalars().first()
 
     if not user:
-        raise RuntimeError(f"No such a user with tg_id={tg_id} in check_user_subscriptions")
+        raise RuntimeError(
+            f"No such a user with tg_id={tg_id} in check_user_subscriptions"
+        )
 
     now_timestamp = int(datetime.now().timestamp())
     expired_subscriptions = []
 
     for subscription in user.subscriptions:
         if subscription.transaction and subscription.transaction.date_payment:
-            if subscription.transaction.date_payment < now_timestamp - SUBSCRIPTION_VITALITY:
+            if (
+                subscription.transaction.date_payment
+                < now_timestamp - SUBSCRIPTION_VITALITY
+            ):
                 expired_subscriptions.append(subscription)
 
     for subscription in expired_subscriptions:
@@ -52,7 +67,6 @@ async_pool = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=Fa
 async def main():
     session = await get_session()
     await check_users_subscriptions(session)
-
     print("Session created successfully, add your queries here.")
 
 
