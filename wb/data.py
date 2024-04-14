@@ -12,7 +12,7 @@ class Filters:
 @dataclass
 class Coordinates:
     latitude: float
-    longitude: float  # TODO: Maybe Decimal?
+    longitude: float
 
 
 @dataclass

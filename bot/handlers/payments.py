@@ -153,9 +153,6 @@ async def send_payment_invoice(
         tg_id=callback.message.chat.id,
     )
     await state.update_data(trx_id=trx_id)
-    await callback.message.answer(
-        text=f"{await get_transactions(session, user_id=callback.message.chat.id)}"
-    )
     await callback.answer()
 
 
@@ -169,15 +166,11 @@ async def pre_checkout_query(pre_checkout_q: PreCheckoutQuery, bot: Bot):
 async def successful_payment(
     message: Message, session: AsyncSession, state: FSMContext
 ):
-    print("SUCCESSFUL PAYMENT:")
-    payment_info = message.successful_payment
-    for k, v in payment_info:
-        print(f"{k} = {v}")
-    sub_id = await create_subscription(
+    await create_subscription(
         session, (await state.get_data()).get("trx_id"), message.chat.id
     )
 
     await message.bot.send_message(
         message.chat.id,
-        f"Платеж на сумму {message.successful_payment.total_amount // 100} subscr: {sub_id}",
+        f"Спасибо за покупку! Подписка уже активна.",
     )

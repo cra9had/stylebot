@@ -49,8 +49,7 @@ class WildBerriesAPI:
                 products.append(
                     Product(
                         id=product.get("id"),
-                        price=product.get("sizes")[0].get("price").get("total")
-                        // 100,  # TODO: unsafe, maybe refactor?!
+                        price=product.get("sizes")[0].get("price").get("total") // 100,
                         name=product.get("name"),
                         image_url=image_url(product.get("id"), "BIG"),
                     )
