@@ -1,11 +1,16 @@
 import asyncio
 import json
 import os
-from typing import Literal, List, Dict
-from services.constants import Constants, ENTER_PROMPT_TEMPLATE, GOOD_ANSWER_PROMPT_TEMPLATE, \
-    INVALID_ANSWERS
+from typing import Dict
+from typing import List
+from typing import Literal
 
 from openai import AsyncOpenAI
+
+from services.constants import Constants
+from services.constants import ENTER_PROMPT_TEMPLATE
+from services.constants import GOOD_ANSWER_PROMPT_TEMPLATE
+from services.constants import INVALID_ANSWERS
 
 BASE_URL = "https://api.proxyapi.ru/openai/v1"
 
@@ -25,32 +30,39 @@ class ChatGPT:
             {
                 "role": "user",
                 "content": prompt,
-            }]
+            }
+        ]
 
         chat_completion = await self.client.chat.completions.create(
             messages=messages,
-            model="gpt-3.5-turbo",
+            model="gpt-4-turbo",
             temperature=0.5,
         )
         return chat_completion.choices[0].message.content
 
     async def get_search_queries(
-            self, user_prompt: str, user_sex: Literal["мужчина", "женщина"]
+        self, user_prompt: str, user_sex: Literal["мужчина", "женщина"]
     ) -> list[str] | None:
-        prompt = Constants.PROMPT_TEMPLATES.get(ENTER_PROMPT_TEMPLATE).format(user_prompt=user_prompt)
+        prompt = Constants.PROMPT_TEMPLATES.get(ENTER_PROMPT_TEMPLATE).format(
+            user_prompt=user_prompt
+        )
         answer = await self._chat(prompt)
 
         if answer in Constants.INVALID_ANSWERS:
             raise BadClothesException()
 
         try:
-            after_answer_prompt = Constants.PROMPT_TEMPLATES.get(GOOD_ANSWER_PROMPT_TEMPLATE).format(chat_answer=answer)
-            final_answer = (await self._chat(after_answer_prompt))
+            after_answer_prompt = Constants.PROMPT_TEMPLATES.get(
+                GOOD_ANSWER_PROMPT_TEMPLATE
+            ).format(chat_answer=answer)
+            final_answer = await self._chat(after_answer_prompt)
             result = json.loads(final_answer)
             print(result)
 
-            user_sex_text = 'мужская' if user_sex == 'male' else 'женская'
-            clothes = [position + f' {user_sex_text}' for position in result.get('clothes')]
+            user_sex_text = "мужская" if user_sex == "male" else "женская"
+            clothes = [
+                position + f" {user_sex_text}" for position in result.get("clothes")
+            ]
 
         except TypeError:
             return None
