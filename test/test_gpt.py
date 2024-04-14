@@ -12,9 +12,7 @@ class ChatGPTTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("джинсы мужчина", queries[0])
 
     async def test_chat(self):
-        answer = await self.gpt._chat(
-            """"Собери мне образ из коричневых шорт и красной футболки"
-
-Выпиши из фразы всю одежду друг за другом через ; в одну строчку, а если таковой нет, напиши NoClothesResponse"""
+        answer = await self.gpt.get_search_queries(
+            """"Собери мне образ из шорт и футболки и носков nike""", user_sex="Девочка"
         )
         self.assertEqual(answer, "Pong!")

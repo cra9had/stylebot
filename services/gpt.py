@@ -35,7 +35,7 @@ class ChatGPT:
 
         chat_completion = await self.client.chat.completions.create(
             messages=messages,
-            model="gpt-4-turbo",
+            model="gpt-4-0125-preview",
             temperature=0.5,
         )
         return chat_completion.choices[0].message.content
@@ -47,7 +47,7 @@ class ChatGPT:
             user_prompt=user_prompt
         )
         answer = await self._chat(prompt)
-
+        print(answer)
         if answer in Constants.INVALID_ANSWERS:
             raise BadClothesException()
 
@@ -55,7 +55,11 @@ class ChatGPT:
             after_answer_prompt = Constants.PROMPT_TEMPLATES.get(
                 GOOD_ANSWER_PROMPT_TEMPLATE
             ).format(chat_answer=answer)
-            final_answer = await self._chat(after_answer_prompt)
+            final_answer = (
+                (await self._chat(after_answer_prompt))
+                .replace("`", "")
+                .replace("json", "")
+            )
             result = json.loads(final_answer)
             print(result)
 
