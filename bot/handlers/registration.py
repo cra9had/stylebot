@@ -88,11 +88,7 @@ async def pressed_sex_btn(
     await state.update_data(sex=callback_data.gender)
 
     await state.set_state(ProfileParameters.input_city)
-    await callback.message.answer(
-        "Вы можете отправить геолокацию \
-    чтобы получать актуальные сроки доставки одежды со склада продавца до вашего города.",
-        reply_markup=make_city_choice_kb(),
-    )
+    await get_city(callback.message, state)
 
 
 @r.message(ProfileParameters.input_city)
