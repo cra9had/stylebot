@@ -66,7 +66,7 @@ async def start_search(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await state.set_state(SearchStates.prompt)
     await callback.message.answer(
-        'Введи запрос для поиска, например: <b>"Подбери образ из белой футболки и кед"</b>',
+        'Введи запрос для поиска, например: "<code>Подбери образ из белой футболки и кед</code>"',
         reply_markup=None,
     )
     await callback.answer()
@@ -164,13 +164,13 @@ async def search_prompt(
 
     except BadClothesException as e:
         await message.answer(
-            'Введите запрос, начинающийся с <b>"Подбери мне образ"</b> и содержащий в себе одежду.'
+            'Введите запрос, начинающийся с "<code>Подбери мне образ</code>" и содержащий в себе как минимум <b>два</b> элемента одежды.'
         )
         return
 
     if not queries:
         await message.answer(
-            'Наш бот не совсем понял, что тебе нужно. Начни свой запрос с <b>"Подбери мне образ"</b> и содержащий в себе одежду. '
+            'Наш бот не совсем понял, что тебе нужно. Начни свой запрос с "<code>Подбери мне образ</code>" и содержащий в себе одежду. '
         )
         return
 
