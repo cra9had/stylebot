@@ -88,17 +88,17 @@ async def get_buy_menu(callback: CallbackQuery, state: FSMContext):
 async def print_tariff_info(
     callback: CallbackQuery, callback_data: SubTariffFactory, state: FSMContext
 ):
-    files = (await state.get_data()).get("files", {})
-    if not files or callback_data.name not in files:
-        tariff_photo = FSInputFile(
-            path=os.path.join("bot", "data", f"{callback_data.name}.png")
-        )
-        tariff_message = await callback.message.answer_photo(photo=tariff_photo)
-        files.update({callback_data.name: tariff_message.photo[-1].file_id})
-        await state.update_data(files=files)
-    elif callback_data.name in files:
-        tariff_photo_id = files.get(callback_data.name)
-        await callback.message.answer_photo(photo=tariff_photo_id)
+    # files = (await state.get_data()).get("files", {})
+    # if not files or callback_data.name not in files:
+    #     tariff_photo = FSInputFile(
+    #         path=os.path.join("bot", "data", f"{callback_data.name}.png")
+    #     )
+    #     tariff_message = await callback.message.answer_photo(photo=tariff_photo)
+    #     files.update({callback_data.name: tariff_message.photo[-1].file_id})
+    #     await state.update_data(files=files)
+    # elif callback_data.name in files:
+    #     tariff_photo_id = files.get(callback_data.name)
+    #     await callback.message.answer_photo(photo=tariff_photo_id)
 
     if callback_data.name != Subscriptions.unlimited.value["name"]:
         msg_text = (
