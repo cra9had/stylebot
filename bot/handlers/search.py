@@ -91,14 +91,13 @@ async def get_max_price(message: Message, state: FSMContext, session: AsyncSessi
         min_price = (await state.get_data()).get("min_price", 0)
         if min_price > max_price:
             await message.answer(
-                "Максимальная цена должна быть больше, чем минимальная. Начнём ещё раз?",
-                reply_markup=return_to_menu_kb(),
+                "MAX⬆️ цена <b>должна быть больше</b>, чем MIN⬇️.\n\nЧтобы всё заработало, введи минимальную заново:",
+                reply_markup=return_to_menu_kb()
             )
-            await message.answer(
-                "Если хочешь попробовать снова, введи минимальную цену за весь образ (в рублях)"
-            )
+
             await state.clear()
             await state.set_state(AdjustSettings.adjust_min_price)
+            return
 
         await state.update_data(max_price=max_price)
         await state.set_state(AdjustSettings.adjust_is_original)
@@ -258,8 +257,14 @@ async def paginate_search(message: Message, state: FSMContext, redis: Redis):
         await message.answer_media_group(media=media_group.build())
 
     except IndexError:
+        curr_ind = (await state.get_data()).get('current_index', 0)
+        if not curr_ind:
+            text = "С такими ценами собрать комбо с Wildberries не получится ;("
+        else:
+            text = "Комбинаций больше нет."
+
         await message.answer(
-            "Комбинаций больше нет.",
+            text=text,
             reply_markup=ReplyKeyboardMarkup(
                 keyboard=[[KeyboardButton(text="Вернуться в меню")]],
                 resize_keyboard=True,
