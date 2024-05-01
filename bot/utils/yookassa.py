@@ -9,7 +9,7 @@ def create_payment(product_title: str, product_price: int, bot_link: str):
 
     payment = yookassa.Payment().create(
         {
-            "amount": {"value": product_price, "currency": "RUB"},
+            "amount": {"value": f"{product_price}.00", "currency": "RUB"},
             "confirmation": {
                 "type": "redirect",
                 "return_url": bot_link,
