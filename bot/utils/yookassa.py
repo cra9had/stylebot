@@ -9,15 +9,11 @@ def create_payment(product_title: str, product_price: int, bot_link: str):
 
     payment = yookassa.Payment().create(
         {
-            "amount": {
-                "value": product_price,
-                "currency": "RUB"
-            },
+            "amount": {"value": product_price, "currency": "RUB"},
             "confirmation": {
                 "type": "redirect",
-                "return_url": "https://google.com",
+                "return_url": "https://t.me/wbstylist_bot",
             },
-
             "description": product_title,
             "capture": True,
         }
