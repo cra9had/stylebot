@@ -29,3 +29,7 @@ class SubTariffFactory(CallbackData, prefix='subscription'):
     name: str
     likes_quantity: int
     price: int
+
+
+class CheckPaymentFactory(CallbackData, prefix='check_payment'):
+    payment_id: str

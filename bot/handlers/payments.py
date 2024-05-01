@@ -12,7 +12,7 @@ from aiogram.types import Message
 from aiogram.types import PreCheckoutQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.cbdata import SubTariffFactory
+from bot.cbdata import SubTariffFactory, CheckPaymentFactory
 from bot.db.constants import Subscriptions
 from bot.db.models import Subscription
 from bot.db.orm import create_subscription
@@ -21,11 +21,12 @@ from bot.db.orm import get_subscriptions
 from bot.db.orm import get_transactions
 from bot.db.orm import get_user_subscription
 from bot.db.orm import SUBSCRIPTION_VITALITY
-from bot.keyboards.payment_kbs import get_one_tarif_kb
+from bot.keyboards.payment_kbs import get_one_tarif_kb, get_payment_kb
 from bot.keyboards.payment_kbs import get_payment_main_menu_kb
 from bot.keyboards.payment_kbs import get_subscription_keyboard
 from bot.keyboards.payment_kbs import get_tariffs_kb
 from bot.keyboards.search_kbs import return_to_menu_kb
+from bot.utils.yookassa import create_payment, check_payment
 
 router = Router()
 
@@ -88,18 +89,6 @@ async def get_buy_menu(callback: CallbackQuery, state: FSMContext):
 async def print_tariff_info(
     callback: CallbackQuery, callback_data: SubTariffFactory, state: FSMContext
 ):
-    # files = (await state.get_data()).get("files", {})
-    # if not files or callback_data.name not in files:
-    #     tariff_photo = FSInputFile(
-    #         path=os.path.join("bot", "data", f"{callback_data.name}.png")
-    #     )
-    #     tariff_message = await callback.message.answer_photo(photo=tariff_photo)
-    #     files.update({callback_data.name: tariff_message.photo[-1].file_id})
-    #     await state.update_data(files=files)
-    # elif callback_data.name in files:
-    #     tariff_photo_id = files.get(callback_data.name)
-    #     await callback.message.answer_photo(photo=tariff_photo_id)
-
     if callback_data.name != Subscriptions.unlimited.value["name"]:
         msg_text = (
             f"Подписка ✨<b>{callback_data.name.upper()}</b>✨\n\nДО <b>{callback_data.likes_quantity}</b>🔄 разнообразных комбинаций одежды "
@@ -128,49 +117,32 @@ async def send_payment_invoice(
     callback: CallbackQuery, state: FSMContext, session: AsyncSession
 ):
     data = await state.get_data()
-    await callback.message.bot.send_invoice(
-        callback.message.chat.id,
-        title=f"Тариф {data['product_title'].upper()}",
-        description=f"Месячная подписка на {data['product_likes']} луков в день",
-        provider_token=os.getenv("YOOKASSA_TOKEN"),
-        currency="rub",
-        photo_url="https://yoursticker.ru/wp-content/uploads/2021/12/wildberries.jpg",
-        photo_width=800,
-        photo_height=600,
-        is_flexible=False,
-        prices=[
-            LabeledPrice(
-                label="Подписка на 1 месяц", amount=data["product_price"] * 100
-            )
-        ],
-        start_parameter="one-month-subscription",
-        payload=f"{data['product_title']}",
-    )
-
+    product_title = f"Пакет: {data['product_likes']} ЛАЙКОВ"
+    product_price = data['product_price']
+    url, payment_id = create_payment(product_title, product_price, os.getenv("BOT_TG_URL"))
+    print(url, payment_id)
     trx_id = await create_transaction(
-        session=session,
-        transaction_type=data["product_title"],
-        tg_id=callback.message.chat.id,
+         session=session,
+         transaction_type=data["product_title"],
+         tg_id=callback.message.chat.id,
+     )
+    await callback.message.answer(
+        "Данные к оплате", reply_markup=get_payment_kb(url, payment_id)
     )
     await state.update_data(trx_id=trx_id)
     await callback.answer()
 
 
-@router.pre_checkout_query()
-async def pre_checkout_query(pre_checkout_q: PreCheckoutQuery, bot: Bot):
-    await bot.answer_pre_checkout_query(pre_checkout_q.id, ok=True)
+@router.callback_query(CheckPaymentFactory.filter())
+async def check_transaction(callback: CallbackQuery, session: AsyncSession, state: FSMContext,
+                            callback_data: CheckPaymentFactory):
+    if check_payment(callback_data.payment_id):
+        await callback.answer("Платёж успешен")
+        await create_subscription(
+            session=session, trx_id=(await state.get_data()).get("trx_id"), user_id=callback.message.chat.id
+        )
+        await callback.message.delete()
+        await callback.message.answer("Спасибо за покупку! Подписка уже активна.")
 
-
-# successful payment
-@router.message(F.successful_payment)
-async def successful_payment(
-    message: Message, session: AsyncSession, state: FSMContext
-):
-    await create_subscription(
-        session, (await state.get_data()).get("trx_id"), message.chat.id
-    )
-
-    await message.bot.send_message(
-        message.chat.id,
-        f"Спасибо за покупку! Подписка уже активна.",
-    )
+    else:
+        await callback.answer("Платёж пока не завершён.")

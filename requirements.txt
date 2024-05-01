@@ -7,3 +7,4 @@ psycopg_binary==3.1.18
 loguru==0.7.2
 redis==5.0.3
 aiocron==1.8
+yookassa==3.1.0

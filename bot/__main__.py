@@ -9,6 +9,7 @@ from aiogram import Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio.client import Redis
+import yookassa
 
 from bot.handlers.payments import router as payments_router
 from bot.handlers.profile import r as profile_router
@@ -36,8 +37,10 @@ async def main() -> None:
         start_router, callbacks_router, search_router, profile_router, payments_router
     )
     t = aiocron.crontab("0 0 * * *", func=reset_redis_counter)
+
     bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
-    await dp.start_polling(bot, redis=redis_client)
+
+    await dp.start_polling(bot, redis=redis_client, yookassa=yookassa.Configuration)
 
 
 if __name__ == "__main__":

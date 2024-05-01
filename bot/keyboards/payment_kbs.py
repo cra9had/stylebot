@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.cbdata import SubTariffFactory
+from bot.cbdata import SubTariffFactory, CheckPaymentFactory
 from bot.db.constants import Subscriptions
 
 
@@ -57,5 +57,14 @@ def get_one_tarif_kb():
     builder.button(text="Вернуться назад", callback_data="go_buy_menu")
 
     builder.adjust(1)
+
+    return builder.as_markup()
+
+
+def get_payment_kb(url, payment_id):
+    builder = InlineKeyboardBuilder()
+
+    builder.button(text='Оплатить', url=url)
+    builder.button(text='Проверить оплату', callback_data=CheckPaymentFactory(payment_id=payment_id))
 
     return builder.as_markup()
