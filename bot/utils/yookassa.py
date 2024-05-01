@@ -16,6 +16,7 @@ def create_payment(product_title: str, product_price: int, bot_link: str):
             },
             "description": product_title,
             "capture": True,
+            "receipt": None,
         }
     )
 
