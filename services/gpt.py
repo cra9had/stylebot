@@ -35,7 +35,7 @@ class ChatGPT:
 
         chat_completion = await self.client.chat.completions.create(
             messages=messages,
-            model="gpt-4-0125-preview",
+            model="gpt-3.5-turbo",
             temperature=0.5,
         )
         return chat_completion.choices[0].message.content
