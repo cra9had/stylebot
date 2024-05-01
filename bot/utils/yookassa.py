@@ -12,7 +12,7 @@ def create_payment(product_title: str, product_price: int, bot_link: str):
             "amount": {"value": product_price, "currency": "RUB"},
             "confirmation": {
                 "type": "redirect",
-                "return_url": "https://t.me/wbstylist_bot",
+                "return_url": bot_link,
             },
             "description": product_title,
             "capture": True,
